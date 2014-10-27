@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="me.tatarka.support.job" >
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name" >
+        <service
+            android:name="me.tatarka.support.job.JobServiceDelegate"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service
+            android:name="me.tatarka.support.job.JobServiceCompat"
+            android:enabled="true"
+            android:exported="false" >
+        </service>
+    </application>
+
+</manifest>
