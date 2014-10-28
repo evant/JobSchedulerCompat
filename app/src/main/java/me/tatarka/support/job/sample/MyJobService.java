@@ -1,5 +1,6 @@
 package me.tatarka.support.job.sample;
 
+import android.util.Log;
 import me.tatarka.support.job.JobParameters;
 import me.tatarka.support.job.JobService;
 
@@ -9,6 +10,7 @@ import me.tatarka.support.job.JobService;
 public class MyJobService extends JobService {
     @Override
     public boolean onStartJob(JobParameters params) {
+        Log.d("MyJobService", "ran job (" + params.getJobId() + ")");
         return false;
     }
 

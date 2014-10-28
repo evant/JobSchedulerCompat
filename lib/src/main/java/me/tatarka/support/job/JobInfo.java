@@ -16,14 +16,8 @@
 
 package me.tatarka.support.job;
 
-import android.app.job.JobParameters;
 import android.content.ComponentName;
-import android.os.BaseBundle;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
-import android.os.PersistableBundle;
+import android.os.*;
 
 /**
  * Container of data passed to the {@link android.app.job.JobScheduler} fully encapsulating the
@@ -340,14 +334,8 @@ public class JobInfo implements Parcelable {
          * @param extras Bundle containing extras you want the scheduler to hold on to for you.
          */
         public Builder setExtras(BaseBundle extras) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                if (!(extras instanceof PersistableBundle)) {
-                    throw new IllegalArgumentException("extras must be a PersistableBundle on api 21+. You may use BundleCompat.newInstance() to create a bundle of the correct type.");
-                }
-            } else {
-                if (!(extras instanceof Bundle)) {
-                    throw new IllegalArgumentException("extras must be a Bundle on api 20 or less. You may use BundleCompat.newInstance() to create a bundle of the correct type.");
-                }
+            if (!PersistableBundleCompat.instanceOf(extras)) {
+                throw new IllegalStateException("extras is not of the correct type. You should use PersistableBundleCompat.newInstance() to create a Bundle type.");
             }
 
             mExtras = extras;

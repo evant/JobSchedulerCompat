@@ -7,13 +7,10 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name" >
         <service
-            android:name="me.tatarka.support.job.JobServiceDelegate"
+            android:name="me.tatarka.support.job.JobServiceLollipopDelegate"
             android:permission="android.permission.BIND_JOB_SERVICE" />
         <service
-            android:name="me.tatarka.support.job.JobServiceCompat"
-            android:enabled="true"
-            android:exported="false" >
-        </service>
+            android:name="me.tatarka.support.job.JobServiceCompat" />
     </application>
 
 </manifest>
