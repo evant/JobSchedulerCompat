@@ -2,11 +2,7 @@ package me.tatarka.support.job;
 
 import android.app.Service;
 import android.content.Intent;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Looper;
-import android.os.Message;
-import android.os.RemoteException;
+import android.os.*;
 import android.util.Log;
 
 /**
@@ -43,7 +39,7 @@ public abstract class JobService extends Service {
     /**
      * Binder for this service.
      */
-    IJobService mBinder = new IJobService.Stub() {
+     IJobServiceCompat mBinder = new IJobServiceCompat() {
         @Override
         public void startJob(JobParameters jobParams) {
             ensureHandler();

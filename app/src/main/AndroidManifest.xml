@@ -18,6 +18,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name="me.tatarka.support.job.sample.MyJobService" />
+        <service android:name="me.tatarka.support.job.sample.MyJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>
 </manifest>

@@ -14,9 +14,6 @@ import java.util.List;
  */
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
 class JobSchedulerLollipopDelegate extends JobScheduler {
-    /** @hide **/
-    public static final String EXTRA_DELEGATE_TO_SERVICE = JobSchedulerLollipopDelegate.class.getName() + ".DELEGATE_TO_SERVICE";
-
     private Context context;
     private android.app.job.JobScheduler jobScheduler;
 
@@ -53,19 +50,13 @@ class JobSchedulerLollipopDelegate extends JobScheduler {
 
     @Override
     public int schedule(JobInfo job) {
-        return jobScheduler.schedule(convertJobInfo(context, job));
+        return jobScheduler.schedule(convertJobInfo(job));
     }
 
-    private static android.app.job.JobInfo convertJobInfo(Context context, JobInfo job) {
-        android.app.job.JobInfo.Builder builder = new android.app.job.JobInfo.Builder(job.getId(), new ComponentName(context, JobServiceLollipopDelegate.class));
+    private static android.app.job.JobInfo convertJobInfo(JobInfo job) {
+        android.app.job.JobInfo.Builder builder = new android.app.job.JobInfo.Builder(job.getId(), job.getService());
 
-        PersistableBundle extras = (PersistableBundle) job.getExtras();
-        if (extras == null) {
-            extras = new PersistableBundle();
-        }
-        extras.putString(EXTRA_DELEGATE_TO_SERVICE, job.getService().flattenToString());
-
-        builder.setExtras(extras);
+        builder.setExtras((PersistableBundle) job.getExtras());
         builder.setRequiresCharging(job.isRequireCharging());
         builder.setRequiresDeviceIdle(job.isRequireDeviceIdle());
         builder.setRequiredNetworkType(job.getNetworkType());
