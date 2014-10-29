@@ -1,6 +1,5 @@
 package me.tatarka.support.job;
 
-import android.os.BaseBundle;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -10,12 +9,12 @@ import android.os.Parcelable;
  */
 public class JobParameters implements Parcelable {
     private final int jobId;
-    private final BaseBundle extras;
+    private final PersistableBundle extras;
     private final IBinder callback;
     private final boolean overrideDeadlineExpired;
 
     /** @hide */
-    public JobParameters(IBinder callback, int jobId, BaseBundle extras,
+    public JobParameters(IBinder callback, int jobId, PersistableBundle extras,
                          boolean overrideDeadlineExpired) {
         this.jobId = jobId;
         this.extras = extras;
@@ -35,7 +34,7 @@ public class JobParameters implements Parcelable {
      * {@link android.app.job.JobInfo.Builder#setExtras(android.os.PersistableBundle)}. This will
      * never be null. If you did not set any extras this will be an empty bundle.
      */
-    public BaseBundle getExtras() {
+    public PersistableBundle getExtras() {
         return extras;
     }
 
@@ -56,7 +55,7 @@ public class JobParameters implements Parcelable {
 
     private JobParameters(Parcel in) {
         jobId = in.readInt();
-        extras = PersistableBundleCompat.read(in);
+        extras = PersistableBundle.readPersistableBundle(in);
         callback = in.readStrongBinder();
         overrideDeadlineExpired = in.readInt() == 1;
     }
@@ -69,7 +68,7 @@ public class JobParameters implements Parcelable {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(jobId);
-        PersistableBundleCompat.write(dest, extras);
+        PersistableBundle.writePersitableBundle(extras, dest);
         dest.writeStrongBinder(callback);
         dest.writeInt(overrideDeadlineExpired ? 1 : 0);
     }

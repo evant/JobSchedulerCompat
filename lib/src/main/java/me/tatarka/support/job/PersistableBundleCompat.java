@@ -9,7 +9,7 @@ import android.os.PersistableBundle;
 /**
  * Created by evantatarka on 10/21/14.
  */
-public class PersistableBundleCompat {
+class PersistableBundleCompat {
     public static final BaseBundle EMPTY;
     static {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -19,15 +19,7 @@ public class PersistableBundleCompat {
         }
     }
 
-    public static BaseBundle newInstance(BaseBundle extras) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            return new PersistableBundle((PersistableBundle) extras);
-        } else {
-            return new Bundle((Bundle) extras);
-        }
-    }
-
-    public static BaseBundle newInstance() {
+     static BaseBundle newInstance() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return new PersistableBundle();
         } else {
@@ -35,7 +27,7 @@ public class PersistableBundleCompat {
         }
     }
 
-    public static BaseBundle newInstance(int capacity) {
+     static BaseBundle newInstance(int capacity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return new PersistableBundle(capacity);
         } else {
@@ -43,7 +35,15 @@ public class PersistableBundleCompat {
         }
     }
 
-    public static void write(Parcel parcel, BaseBundle bundle) {
+     static BaseBundle newInstance(BaseBundle extras) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            return new PersistableBundle((PersistableBundle) extras);
+        } else {
+            return new Bundle((Bundle) extras);
+        }
+    }
+
+     static void write(Parcel parcel, BaseBundle bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             parcel.writePersistableBundle((PersistableBundle) bundle);
         } else {
@@ -51,7 +51,7 @@ public class PersistableBundleCompat {
         }
     }
 
-    public static BaseBundle read(Parcel parcel) {
+     static BaseBundle read(Parcel parcel) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return parcel.readPersistableBundle();
         } else {
@@ -59,7 +59,7 @@ public class PersistableBundleCompat {
         }
     }
 
-    public static void putPersistableBundle(String key, BaseBundle value, BaseBundle bundle) {
+     static void putPersistableBundle(String key, BaseBundle value, BaseBundle bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ((PersistableBundle) bundle).putPersistableBundle(key, (PersistableBundle) value);
         } else {
@@ -67,7 +67,7 @@ public class PersistableBundleCompat {
         }
     }
 
-    public static BaseBundle getPersistableBundle(String key, BaseBundle bundle) {
+     static BaseBundle getPersistableBundle(String key, BaseBundle bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return ((PersistableBundle) bundle).getPersistableBundle(key);
         } else {
@@ -75,7 +75,7 @@ public class PersistableBundleCompat {
         }
     }
 
-    public static boolean instanceOf(BaseBundle bundle) {
+     static boolean instanceOf(BaseBundle bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return bundle instanceof PersistableBundle;
         } else {

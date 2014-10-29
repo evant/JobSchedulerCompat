@@ -56,7 +56,7 @@ class JobSchedulerLollipopDelegate extends JobScheduler {
     private static android.app.job.JobInfo convertJobInfo(JobInfo job) {
         android.app.job.JobInfo.Builder builder = new android.app.job.JobInfo.Builder(job.getId(), job.getService());
 
-        builder.setExtras((PersistableBundle) job.getExtras());
+        builder.setExtras((PersistableBundle) job.getExtras().getRealBundle());
         builder.setRequiresCharging(job.isRequireCharging());
         builder.setRequiresDeviceIdle(job.isRequireDeviceIdle());
         builder.setRequiredNetworkType(job.getNetworkType());
@@ -81,7 +81,7 @@ class JobSchedulerLollipopDelegate extends JobScheduler {
 
     private static JobInfo convertFromJobInfo(android.app.job.JobInfo job) {
         JobInfo.Builder builder = new JobInfo.Builder(job.getId(), job.getService());
-        builder.setExtras(job.getExtras());
+        builder.setExtras(new me.tatarka.support.job.PersistableBundle(job.getExtras()));
         builder.setRequiresCharging(job.isRequireCharging());
         builder.setRequiresDeviceIdle(job.isRequireDeviceIdle());
         builder.setRequiredNetworkType(job.getNetworkType());

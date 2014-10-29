@@ -71,7 +71,7 @@ abstract class IJobServiceCompat {
                     callback.acknowledgeStopMessage(jobId, reschedule);
                 }
             }
-        }, params.getJobId(), params.getExtras(), params.isOverrideDeadlineExpired());
+        }, params.getJobId(), new PersistableBundle(params.getExtras()), params.isOverrideDeadlineExpired());
     }
 
     public IBinder asBinder() {

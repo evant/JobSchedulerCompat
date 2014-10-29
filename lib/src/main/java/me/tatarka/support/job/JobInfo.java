@@ -76,7 +76,7 @@ public class JobInfo implements Parcelable {
     public static final int DEFAULT_BACKOFF_POLICY = BACKOFF_POLICY_EXPONENTIAL;
 
     private final int jobId;
-    private final BaseBundle extras;
+    private final PersistableBundle extras;
     private final ComponentName service;
     private final boolean requireCharging;
     private final boolean requireDeviceIdle;
@@ -101,7 +101,7 @@ public class JobInfo implements Parcelable {
     /**
      * Bundle of extras which are returned to your application at execution time.
      */
-    public BaseBundle getExtras() {
+    public PersistableBundle getExtras() {
         return extras;
     }
 
@@ -213,7 +213,7 @@ public class JobInfo implements Parcelable {
 
     private JobInfo(Parcel in) {
         jobId = in.readInt();
-        extras = PersistableBundleCompat.read(in);
+        extras = PersistableBundle.readPersistableBundle(in);
         service = in.readParcelable(null);
         requireCharging = in.readInt() == 1;
         requireDeviceIdle = in.readInt() == 1;
@@ -255,7 +255,7 @@ public class JobInfo implements Parcelable {
     @Override
     public void writeToParcel(Parcel out, int flags) {
         out.writeInt(jobId);
-        PersistableBundleCompat.write(out, extras);
+        PersistableBundle.writePersitableBundle(extras, out);
         out.writeParcelable(service, flags);
         out.writeInt(requireCharging ? 1 : 0);
         out.writeInt(requireDeviceIdle ? 1 : 0);
@@ -293,7 +293,7 @@ public class JobInfo implements Parcelable {
      */
     public static final class Builder {
         private int mJobId;
-        private BaseBundle mExtras = PersistableBundleCompat.EMPTY;
+        private PersistableBundle mExtras = PersistableBundle.EMPTY;
         private ComponentName mJobService;
         // Requirements.
         private boolean mRequiresCharging;
@@ -333,11 +333,7 @@ public class JobInfo implements Parcelable {
          *
          * @param extras Bundle containing extras you want the scheduler to hold on to for you.
          */
-        public Builder setExtras(BaseBundle extras) {
-            if (!PersistableBundleCompat.instanceOf(extras)) {
-                throw new IllegalStateException("extras is not of the correct type. You should use PersistableBundleCompat.newInstance() to create a Bundle type.");
-            }
-
+        public Builder setExtras(PersistableBundle extras) {
             mExtras = extras;
             return this;
         }
@@ -473,7 +469,7 @@ public class JobInfo implements Parcelable {
                 throw new IllegalArgumentException("You're trying to build a job with no " +
                         "constraints, this is not allowed.");
             }
-            mExtras = PersistableBundleCompat.newInstance(mExtras); // Make our own copy.
+            mExtras = new PersistableBundle(mExtras); // Make our own copy.
             // Check that a deadline was not set on a periodic job.
             if (mIsPeriodic && (mMaxExecutionDelayMillis != 0L)) {
                 throw new IllegalArgumentException("Can't call setOverrideDeadline() on a " +

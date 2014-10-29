@@ -13,6 +13,7 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
 
+/** @hide **/
 public class JobServiceCompat extends Service {
     static final String TAG = "JobServiceCompat";
 
