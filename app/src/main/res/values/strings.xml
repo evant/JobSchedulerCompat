@@ -33,4 +33,5 @@ limitations under the License.
     <string name="timing">Timing:</string>
     <string name="delay">Delay:</string>
     <string name="deadline">Deadline:</string>
+    <string name="none">None</string>
 </resources>

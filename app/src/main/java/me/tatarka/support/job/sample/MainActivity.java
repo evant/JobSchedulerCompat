@@ -55,6 +55,7 @@ public class MainActivity extends ActionBarActivity {
         mParamsTextView = (TextView) findViewById(R.id.task_params);
         mDelayEditText = (EditText) findViewById(R.id.delay_time);
         mDeadlineEditText = (EditText) findViewById(R.id.deadline_time);
+        mNoConnectivityRadioButton = (RadioButton) findViewById(R.id.checkbox_none);
         mWiFiConnectivityRadioButton = (RadioButton) findViewById(R.id.checkbox_unmetered);
         mAnyConnectivityRadioButton = (RadioButton) findViewById(R.id.checkbox_any);
         mRequiresChargingCheckBox = (CheckBox) findViewById(R.id.checkbox_charging);
@@ -76,6 +77,7 @@ public class MainActivity extends ActionBarActivity {
     private TextView mParamsTextView;
     private EditText mDelayEditText;
     private EditText mDeadlineEditText;
+    private RadioButton mNoConnectivityRadioButton;
     private RadioButton mWiFiConnectivityRadioButton;
     private RadioButton mAnyConnectivityRadioButton;
     private CheckBox mRequiresChargingCheckBox;
@@ -144,7 +146,11 @@ public class MainActivity extends ActionBarActivity {
         builder.setRequiresDeviceIdle(mRequiresIdleCheckbox.isChecked());
         builder.setRequiresCharging(mRequiresChargingCheckBox.isChecked());
 
-        mTestService.scheduleJob(builder.build());
+        try {
+            mTestService.scheduleJob(builder.build());
+        } catch (IllegalArgumentException e) {
+            Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
 
     }
 

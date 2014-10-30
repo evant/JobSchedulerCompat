@@ -484,8 +484,24 @@ public class JobInfo implements Parcelable {
                         " back-off policy, so calling setBackoffCriteria with" +
                         " setRequiresDeviceIdle is an error.");
             }
-            return new JobInfo(this);
+
+            JobInfo jobInfo = new JobInfo(this);
+            checkSupported(jobInfo);
+            return jobInfo;
         }
+
+
+        // Adjust this check as job features get implemented
+        private void checkSupported(JobInfo job) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                return;
+            }
+
+            if (job.isRequireDeviceIdle() || job.isRequireCharging() || job.isPersisted() || job.isPeriodic()) {
+                throw new IllegalArgumentException("Not yet implemented!");
+            }
+        }
+
     }
 
 }

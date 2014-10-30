@@ -88,6 +88,11 @@ limitations under the License.
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
+                    <RadioButton android:id="@+id/checkbox_none"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="@string/none"/>
                     <RadioButton android:id="@+id/checkbox_any"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

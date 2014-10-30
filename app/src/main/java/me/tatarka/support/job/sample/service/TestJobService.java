@@ -117,6 +117,7 @@ public class TestJobService extends JobService {
         if (params == null) {
             return false;
         } else {
+            Log.i(TAG, "job finished: " + params.getJobId());
             jobFinished(params, false);
             return true;
         }
