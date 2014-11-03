@@ -1,22 +1,23 @@
 package me.tatarka.support.job;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.support.v4.content.WakefulBroadcastReceiver;
+import android.support.v4.net.ConnectivityManagerCompat;
 
 /**
  * @hide *
  */
-public class NetworkReceiver extends BroadcastReceiver {
+public class NetworkReceiver extends WakefulBroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netInfo = cm.getActiveNetworkInfo();
         if (netInfo != null && netInfo.isConnectedOrConnecting()) {
             ReceiverUtils.disable(context, getClass());
-            JobServiceCompat.networkStateChanged(context);
+            startWakefulService(context, JobServiceCompat.networkStateChangedIntent(context, ConnectivityManagerCompat.isActiveNetworkMetered(cm)));
         }
     }
 }

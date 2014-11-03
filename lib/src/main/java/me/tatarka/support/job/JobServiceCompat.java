@@ -6,19 +6,23 @@ import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.SystemClock;
+import android.support.v4.content.WakefulBroadcastReceiver;
 import android.support.v4.net.ConnectivityManagerCompat;
 import android.util.Log;
 import android.util.SparseArray;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ListIterator;
 
 /**
  * @hide *
@@ -30,17 +34,20 @@ public class JobServiceCompat extends Service {
     private static final String EXTRA_JOB = "EXTRA_JOB";
     private static final String EXTRA_JOB_ID = "EXTRA_JOB_ID";
     private static final String EXTRA_RUN_IMMEDIATELY = "EXTRA_RUN_IMMEDIATELY";
+    private static final String EXTRA_NETWORK_STATE_METERED = "EXTRA_NETWORK_STATE_METERED";
+    private static final String EXTRA_POWER_STATE_CONNECTED = "EXTRA_POWER_STATE_CONNECTED";
 
     private static final int MSG_SCHEDULE_JOB = 0;
     private static final int MSG_START_JOB = 1;
     private static final int MSG_CANCEL_JOB = 2;
     private static final int MSG_NETWORK_STATE_CHANGED = 3;
+    private static final int MSG_POWER_STATE_CHANGED = 4;
 
     private AlarmManager am;
     // TODO: the job state needs to be persisted in case the service is destroyed and then recreated.
     private SparseArray<PendingIntent> scheduledJobs = new SparseArray<PendingIntent>();
     private SparseArray<JobServiceConnection> runningJobs = new SparseArray<JobServiceConnection>();
-    private List<JobInfo> jobsWaitingOnNetwork = new ArrayList<JobInfo>();
+    private List<JobInfo> jobsWaitingOnState = new ArrayList<JobInfo>();
 
     @Override
 
@@ -74,7 +81,13 @@ public class JobServiceCompat extends Service {
                 break;
             }
             case MSG_NETWORK_STATE_CHANGED: {
-                handleNetworkStateChanged();
+                boolean metered = intent.getBooleanExtra(EXTRA_NETWORK_STATE_METERED, false);
+                handleNetworkStateChanged(intent, metered);
+                break;
+            }
+            case MSG_POWER_STATE_CHANGED: {
+                boolean connected = intent.getBooleanExtra(EXTRA_POWER_STATE_CONNECTED, false);
+                handlePowerStateChanged(intent, connected);
                 break;
             }
         }
@@ -140,8 +153,22 @@ public class JobServiceCompat extends Service {
 
                 if (!hasNecessaryNetwork) {
                     // Register listener and fire job when network comes back online.
-                    jobsWaitingOnNetwork.add(job);
+                    jobsWaitingOnState.add(job);
                     ReceiverUtils.enable(this, NetworkReceiver.class);
+                    return;
+                }
+            }
+
+            // Ensure power
+            if (job.isRequireCharging()) {
+                Intent i = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+                int plugged = i.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+                boolean isCharging = plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB;
+
+                if (!isCharging) {
+                    // Register listener and fire job when device is plugged in.
+                    jobsWaitingOnState.add(job);
+                    ReceiverUtils.enable(this, PowerReceiver.class);
                     return;
                 }
             }
@@ -153,16 +180,38 @@ public class JobServiceCompat extends Service {
 
         JobServiceConnection connection = new JobServiceConnection(job);
         runningJobs.put(job.getId(), connection);
-        jobsWaitingOnNetwork.remove(job);
+        jobsWaitingOnState.remove(job);
         bindService(intent, connection, flags);
     }
 
-    private void handleNetworkStateChanged() {
-        ArrayList<JobInfo> pendingJobs = new ArrayList<JobInfo>(jobsWaitingOnNetwork);
-        jobsWaitingOnNetwork.clear();
-        for (JobInfo job : pendingJobs) {
-            handleStartJob(job, false);
+    private void handleNetworkStateChanged(Intent intent, boolean metered) {
+        ArrayList<JobInfo> pendingJobs = new ArrayList<JobInfo>(jobsWaitingOnState);
+        jobsWaitingOnState.clear();
+        ListIterator<JobInfo> iter = pendingJobs.listIterator();
+        while (iter.hasNext()) {
+            JobInfo job = iter.next();
+            if (job.getNetworkType() == (metered ? JobInfo.NETWORK_TYPE_ANY : JobInfo.NETWORK_TYPE_UNMETERED)) {
+                handleStartJob(job, false);
+                iter.remove();
+            }
         }
+        jobsWaitingOnState.addAll(pendingJobs);
+        WakefulBroadcastReceiver.completeWakefulIntent(intent);
+    }
+
+    private void handlePowerStateChanged(Intent intent, boolean connected) {
+        ArrayList<JobInfo> pendingJobs = new ArrayList<JobInfo>(jobsWaitingOnState);
+        jobsWaitingOnState.clear();
+        ListIterator<JobInfo> iter = pendingJobs.listIterator();
+        while (iter.hasNext()) {
+            JobInfo job = iter.next();
+            if (job.isRequireCharging() && connected) {
+                handleStartJob(job, false);
+                iter.remove();
+            }
+        }
+        jobsWaitingOnState.addAll(pendingJobs);
+        WakefulBroadcastReceiver.completeWakefulIntent(intent);
     }
 
     private PendingIntent toPendingIntent(JobInfo job, boolean runImmediately) {
@@ -188,10 +237,16 @@ public class JobServiceCompat extends Service {
                         .putExtra(EXTRA_JOB_ID, jobId));
     }
 
-    static void networkStateChanged(Context context) {
-        context.startService(
-                new Intent(context, JobServiceCompat.class)
-                        .putExtra(EXTRA_MSG, MSG_NETWORK_STATE_CHANGED));
+    static Intent networkStateChangedIntent(Context context, boolean metered) {
+        return new Intent(context, JobServiceCompat.class)
+                .putExtra(EXTRA_MSG, MSG_NETWORK_STATE_CHANGED)
+                .putExtra(EXTRA_NETWORK_STATE_METERED, metered);
+    }
+
+    static Intent powerStateChangedIntent(Context context, boolean connected) {
+        return new Intent(context, JobServiceCompat.class)
+                .putExtra(EXTRA_MSG, MSG_POWER_STATE_CHANGED)
+                .putExtra(EXTRA_POWER_STATE_CONNECTED, connected);
     }
 
     private class JobServiceConnection implements ServiceConnection {
