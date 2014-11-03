@@ -108,10 +108,6 @@ public class TestJobService extends JobService {
         tm.schedule(t);
     }
 
-    /**
-     * Not currently used, but as an exercise you can hook this up to a button in the UI to finish a
-     * job that has landed in onStartJob().
-     */
     public boolean callJobFinished() {
         JobParameters params = jobParamsMap.poll();
         if (params == null) {
@@ -123,4 +119,14 @@ public class TestJobService extends JobService {
         }
     }
 
+    public boolean callJobFailed() {
+        JobParameters params = jobParamsMap.poll();
+        if (params == null) {
+            return false;
+        } else {
+            Log.i(TAG, "job failed: " + params.getJobId());
+            jobFinished(params, true);
+            return true;
+        }
+    }
 }

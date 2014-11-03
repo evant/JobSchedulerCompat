@@ -34,4 +34,8 @@ limitations under the License.
     <string name="delay">Delay:</string>
     <string name="deadline">Deadline:</string>
     <string name="none">None</string>
+    <string name="failed_job_button_text">taskFailed</string>
+    <string name="backoff">Backoff:</string>
+    <string name="linear">Linear</string>
+    <string name="exponential">Exponential</string>
 </resources>

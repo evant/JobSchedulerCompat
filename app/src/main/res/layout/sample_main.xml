@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
 Copyright 2014 The Android Open Source Project
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,7 @@ limitations under the License.
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical" >
+    android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -28,6 +27,7 @@ limitations under the License.
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="100dp">
+
             <TextView
                 android:id="@+id/onstart_textview"
                 android:layout_width="wrap_content"
@@ -35,7 +35,8 @@ limitations under the License.
                 android:layout_weight="1"
                 android:background="@color/none_received"
                 android:gravity="center"
-                android:text="@string/onstarttask"/>
+                android:text="@string/onstarttask" />
+
             <TextView
                 android:id="@+id/onstop_textview"
                 android:layout_width="wrap_content"
@@ -43,16 +44,34 @@ limitations under the License.
                 android:layout_weight="1"
                 android:background="@color/none_received"
                 android:gravity="center"
-                android:text="@string/onstoptask"/>
+                android:text="@string/onstoptask" />
         </LinearLayout>
-        <Button
-            android:id="@+id/finished_button"
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="20dp"
-            android:layout_marginBottom="5dp"
-            android:onClick="finishJob"
-            android:text="@string/finish_job_button_text"/>
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/finished_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="20dp"
+                android:layout_marginBottom="5dp"
+                android:onClick="finishJob"
+                android:layout_weight="1"
+                android:text="@string/finish_job_button_text" />
+
+            <Button
+                android:id="@+id/fail_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="20dp"
+                android:layout_marginBottom="5dp"
+                android:onClick="failJob"
+                android:layout_weight="1"
+                android:text="@string/failed_job_button_text" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/task_params"
@@ -70,99 +89,165 @@ limitations under the License.
             android:layout_height="wrap_content"
             android:text="@string/constraints"
             android:layout_margin="15dp"
-            android:textSize="18dp"/>
+            android:textSize="18dp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:layout_marginLeft="10dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/connectivity"
-                    android:layout_marginRight="10dp"/>
+                    android:layout_marginRight="10dp" />
+
                 <RadioGroup
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
-                    <RadioButton android:id="@+id/checkbox_none"
+
+                    <RadioButton
+                        android:id="@+id/checkbox_none"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:checked="true"
-                        android:text="@string/none"/>
-                    <RadioButton android:id="@+id/checkbox_any"
+                        android:text="@string/none" />
+
+                    <RadioButton
+                        android:id="@+id/checkbox_any"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/any"/>
-                    <RadioButton android:id="@+id/checkbox_unmetered"
+                        android:text="@string/any" />
+
+                    <RadioButton
+                        android:id="@+id/checkbox_unmetered"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/unmetered"/>
+                        android:text="@string/unmetered" />
                 </RadioGroup>
 
             </LinearLayout>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/timing"/>
+                    android:text="@string/timing" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="15dp"
                     android:textSize="17dp"
-                    android:text="@string/delay"/>
+                    android:text="@string/delay" />
+
                 <EditText
                     android:id="@+id/delay_time"
                     android:layout_width="60dp"
                     android:layout_height="wrap_content"
-                    android:inputType="number"/>
+                    android:inputType="number" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/deadline"
-                    android:textSize="17dp"/>
+                    android:textSize="17dp" />
+
                 <EditText
                     android:id="@+id/deadline_time"
                     android:layout_width="60dp"
                     android:layout_height="wrap_content"
-                    android:inputType="number"/>
+                    android:inputType="number" />
             </LinearLayout>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/backoff" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="15dp"
+                    android:textSize="17dp"
+                    android:text="@string/delay" />
+
+                <EditText
+                    android:id="@+id/backoff_delay_time"
+                    android:layout_width="60dp"
+                    android:layout_height="wrap_content"
+                    android:inputType="number" />
+
+                <RadioGroup
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <RadioButton
+                        android:id="@+id/checkbox_linear"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="@string/linear" />
+
+                    <RadioButton
+                        android:id="@+id/checkbox_exponential"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="@string/exponential" />
+                </RadioGroup>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/charging_caption"
-                    android:layout_marginRight="15dp"/>
+                    android:layout_marginRight="15dp" />
+
                 <CheckBox
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:id="@+id/checkbox_charging"
-                    android:text="@string/charging_text"/>
+                    android:text="@string/charging_text" />
             </LinearLayout>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/idle_caption"
-                    android:layout_marginRight="15dp"/>
+                    android:layout_marginRight="15dp" />
+
                 <CheckBox
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:id="@+id/checkbox_idle"
-                    android:text="@string/idle_mode_text"/>
+                    android:text="@string/idle_mode_text" />
             </LinearLayout>
 
         </LinearLayout>
+
         <Button
             android:id="@+id/schedule_button"
             android:layout_width="match_parent"
@@ -171,7 +256,8 @@ limitations under the License.
             android:layout_marginLeft="40dp"
             android:layout_marginRight="40dp"
             android:onClick="scheduleJob"
-            android:text="@string/schedule_job_button_text"/>
+            android:text="@string/schedule_job_button_text" />
+
         <Button
             android:id="@+id/cancel_button"
             android:layout_width="match_parent"
@@ -179,6 +265,6 @@ limitations under the License.
             android:layout_marginLeft="40dp"
             android:layout_marginRight="40dp"
             android:onClick="cancelAllJobs"
-            android:text="@string/cancel_all_jobs_button_text"/>
+            android:text="@string/cancel_all_jobs_button_text" />
     </LinearLayout>
 </ScrollView>

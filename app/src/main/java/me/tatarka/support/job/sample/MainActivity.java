@@ -60,6 +60,9 @@ public class MainActivity extends ActionBarActivity {
         mAnyConnectivityRadioButton = (RadioButton) findViewById(R.id.checkbox_any);
         mRequiresChargingCheckBox = (CheckBox) findViewById(R.id.checkbox_charging);
         mRequiresIdleCheckbox = (CheckBox) findViewById(R.id.checkbox_idle);
+        mBackoffDelayEditText = (EditText) findViewById(R.id.backoff_delay_time);
+        mBackoffLinearRadioButton = (RadioButton) findViewById(R.id.checkbox_linear);
+        mBackoffExponentialRadioButton = (RadioButton) findViewById(R.id.checkbox_exponential);
         mServiceComponent = new ComponentName(this, TestJobService.class);
         // Start service and provide it a way to communicate with us.
         Intent startServiceIntent = new Intent(this, TestJobService.class);
@@ -77,11 +80,14 @@ public class MainActivity extends ActionBarActivity {
     private TextView mParamsTextView;
     private EditText mDelayEditText;
     private EditText mDeadlineEditText;
+    private EditText mBackoffDelayEditText;
     private RadioButton mNoConnectivityRadioButton;
     private RadioButton mWiFiConnectivityRadioButton;
     private RadioButton mAnyConnectivityRadioButton;
     private CheckBox mRequiresChargingCheckBox;
     private CheckBox mRequiresIdleCheckbox;
+    private RadioButton mBackoffLinearRadioButton;
+    private RadioButton mBackoffExponentialRadioButton;
 
     ComponentName mServiceComponent;
     /**
@@ -146,6 +152,12 @@ public class MainActivity extends ActionBarActivity {
         builder.setRequiresDeviceIdle(mRequiresIdleCheckbox.isChecked());
         builder.setRequiresCharging(mRequiresChargingCheckBox.isChecked());
 
+        String backoffTime = mBackoffDelayEditText.getText().toString();
+        if (backoffTime != null && !TextUtils.isEmpty(backoffTime)) {
+            int backoffPolicy = mBackoffLinearRadioButton.isChecked() ? JobInfo.BACKOFF_POLICY_LINEAR : JobInfo.BACKOFF_POLICY_EXPONENTIAL;
+            builder.setBackoffCriteria(Long.valueOf(backoffTime) * 1000, backoffPolicy);
+        }
+
         try {
             mTestService.scheduleJob(builder.build());
         } catch (IllegalArgumentException e) {
@@ -167,6 +179,14 @@ public class MainActivity extends ActionBarActivity {
             return;
         }
         mTestService.callJobFinished();
+        mParamsTextView.setText("");
+    }
+
+    public void failJob(View v) {
+        if (!ensureTestService()) {
+            return;
+        }
+        mTestService.callJobFailed();
         mParamsTextView.setText("");
     }
 
