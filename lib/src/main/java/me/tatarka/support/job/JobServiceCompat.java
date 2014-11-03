@@ -36,6 +36,7 @@ public class JobServiceCompat extends Service {
     private static final String EXTRA_RUN_IMMEDIATELY = "EXTRA_RUN_IMMEDIATELY";
     private static final String EXTRA_NETWORK_STATE_METERED = "EXTRA_NETWORK_STATE_METERED";
     private static final String EXTRA_POWER_STATE_CONNECTED = "EXTRA_POWER_STATE_CONNECTED";
+    private static final String EXTRA_NUM_FAILURES = "EXTRA_NUM_FAILURES";
 
     private static final int MSG_SCHEDULE_JOB = 0;
     private static final int MSG_START_JOB = 1;
@@ -50,10 +51,14 @@ public class JobServiceCompat extends Service {
     private List<JobInfo> jobsWaitingOnState = new ArrayList<JobInfo>();
 
     @Override
-
     public void onCreate() {
         super.onCreate();
         am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
     }
 
     @Override
@@ -71,8 +76,9 @@ public class JobServiceCompat extends Service {
             }
             case MSG_START_JOB: {
                 JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
+                int numFailures = intent.getIntExtra(EXTRA_NUM_FAILURES, 0);
                 boolean runImmediately = intent.getBooleanExtra(EXTRA_RUN_IMMEDIATELY, false);
-                handleStartJob(job, runImmediately);
+                handleStartJob(job, numFailures, runImmediately);
                 break;
             }
             case MSG_CANCEL_JOB: {
@@ -96,22 +102,50 @@ public class JobServiceCompat extends Service {
     }
 
     private void handleSchedule(JobInfo job, int startId) {
-        PendingIntent pendingIntent = toPendingIntent(job, false);
+        PendingIntent pendingIntent = toPendingIntent(job, 0, false);
         scheduledJobs.put(job.getId(), pendingIntent);
-
-        // TODO: crazy complex logic to handle scheduling of jobs.
 
         long elapsedTime = SystemClock.elapsedRealtime();
 
         if (job.hasEarlyConstraint()) {
-            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTime + job.getMinLatencyMillis(), toPendingIntent(job, false));
+            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTime + job.getMinLatencyMillis(), toPendingIntent(job, 0, false));
         }
 
         if (job.hasLateConstraint()) {
-            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTime + job.getMaxExecutionDelayMillis(), toPendingIntent(job, true));
+            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTime + job.getMaxExecutionDelayMillis(), toPendingIntent(job, 0, true));
         }
 
         stopSelfResult(startId);
+    }
+
+    private void handleReschedule(JobInfo job, int numFailures) {
+        PendingIntent pendingIntent = toPendingIntent(job, numFailures, true);
+        scheduledJobs.put(job.getId(), pendingIntent);
+
+        if (job.isRequireDeviceIdle()) {
+            // TODO: different reschedule policy
+            throw new UnsupportedOperationException("rescheduling idle tasks is not yet implemented");
+        }
+
+        long backoffTime;
+        switch (job.getBackoffPolicy()) {
+            case JobInfo.BACKOFF_POLICY_LINEAR:
+                backoffTime = job.getInitialBackoffMillis() * numFailures;
+                break;
+            case JobInfo.BACKOFF_POLICY_EXPONENTIAL:
+                backoffTime = job.getInitialBackoffMillis() * (long) Math.pow(2, numFailures - 1);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown backoff policy: " + job.getBackoffPolicy());
+        }
+
+        if (backoffTime > 5 * 60 * 60 * 1000 /* 5 hours*/) {
+            // We have backed-off too long, give up.
+            return;
+        }
+
+        long elapsedTime = SystemClock.elapsedRealtime();
+        am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTime + backoffTime, toPendingIntent(job, numFailures, true));
     }
 
     private void handleCancelJob(int jobId) {
@@ -127,7 +161,7 @@ public class JobServiceCompat extends Service {
         }
     }
 
-    private void handleStartJob(final JobInfo job, boolean runImmediately) {
+    private void handleStartJob(final JobInfo job, int numFailures, boolean runImmediately) {
         if (scheduledJobs.get(job.getId()) == null) {
             return; // Job already run.
         }
@@ -176,9 +210,9 @@ public class JobServiceCompat extends Service {
 
         // Ensure other alarm is canceled
         scheduledJobs.remove(job.getId());
-        am.cancel(toPendingIntent(job, true));
+        am.cancel(toPendingIntent(job, 0, true));
 
-        JobServiceConnection connection = new JobServiceConnection(job);
+        JobServiceConnection connection = new JobServiceConnection(job, numFailures);
         runningJobs.put(job.getId(), connection);
         jobsWaitingOnState.remove(job);
         bindService(intent, connection, flags);
@@ -191,7 +225,7 @@ public class JobServiceCompat extends Service {
         while (iter.hasNext()) {
             JobInfo job = iter.next();
             if (job.getNetworkType() == (metered ? JobInfo.NETWORK_TYPE_ANY : JobInfo.NETWORK_TYPE_UNMETERED)) {
-                handleStartJob(job, false);
+                handleStartJob(job, 0, false);
                 iter.remove();
             }
         }
@@ -206,7 +240,7 @@ public class JobServiceCompat extends Service {
         while (iter.hasNext()) {
             JobInfo job = iter.next();
             if (job.isRequireCharging() && connected) {
-                handleStartJob(job, false);
+                handleStartJob(job, 0, false);
                 iter.remove();
             }
         }
@@ -214,11 +248,12 @@ public class JobServiceCompat extends Service {
         WakefulBroadcastReceiver.completeWakefulIntent(intent);
     }
 
-    private PendingIntent toPendingIntent(JobInfo job, boolean runImmediately) {
+    private PendingIntent toPendingIntent(JobInfo job, int numFailures, boolean runImmediately) {
         Intent intent = new Intent(this, JobServiceCompat.class)
-                .setAction("" + runImmediately)
+                .setAction(job.getId() + ":" + runImmediately + ":" + numFailures)
                 .putExtra(EXTRA_MSG, MSG_START_JOB)
                 .putExtra(EXTRA_JOB, job)
+                .putExtra(EXTRA_NUM_FAILURES, numFailures)
                 .putExtra(EXTRA_RUN_IMMEDIATELY, runImmediately);
         return PendingIntent.getService(this, job.getId(), intent, 0);
     }
@@ -254,7 +289,7 @@ public class JobServiceCompat extends Service {
         JobParameters jobParams;
         IJobService jobService;
 
-        JobServiceConnection(JobInfo job) {
+        JobServiceConnection(final JobInfo job, final int numFailures) {
             this.job = job;
             this.jobParams = new JobParameters(new IJobCallback.Stub() {
                 @Override
@@ -262,7 +297,9 @@ public class JobServiceCompat extends Service {
                     finishJob(jobId, JobServiceConnection.this);
 
                     if (needsReschedule) {
-                        // TODO
+                        handleReschedule(job, numFailures + 1);
+                    } else if (runningJobs.size() == 0) {
+                        stopSelf();
                     }
                 }
 
@@ -270,6 +307,9 @@ public class JobServiceCompat extends Service {
                 public void acknowledgeStartMessage(int jobId, boolean workOngoing) throws RemoteException {
                     if (!workOngoing) {
                         finishJob(jobId, JobServiceConnection.this);
+                        if (runningJobs.size() == 0) {
+                            stopSelf();
+                        }
                     }
                 }
 
@@ -278,7 +318,9 @@ public class JobServiceCompat extends Service {
                     finishJob(jobId, JobServiceConnection.this);
 
                     if (reschedule) {
-                        // TODO
+                        handleReschedule(job, numFailures + 1);
+                    } else if (runningJobs.size() == 0) {
+                        stopSelf();
                     }
                 }
             }, job.getId(), job.getExtras(), false);
@@ -320,9 +362,10 @@ public class JobServiceCompat extends Service {
             }
             runningJobs.remove(jobId);
 
-            if (runningJobs.size() == 0) {
-                stopSelf();
-            }
+            // TODO: should always stop self, but for now don't so that pendingJobs doesn't get cleared.
+//            if (runningJobs.size() == 0) {
+//                stopSelf();
+//            }
         }
     }
 }
