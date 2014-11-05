@@ -1,13 +1,13 @@
 package me.tatarka.support.job;
 
 import android.annotation.TargetApi;
-import android.content.ComponentName;
 import android.content.Context;
 import android.os.Build;
-import android.os.PersistableBundle;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import me.tatarka.support.os.PersistableBundle;
 
 /**
  * Created by evantatarka on 10/21/14.
@@ -56,7 +56,7 @@ class JobSchedulerLollipopDelegate extends JobScheduler {
     private static android.app.job.JobInfo convertJobInfo(JobInfo job) {
         android.app.job.JobInfo.Builder builder = new android.app.job.JobInfo.Builder(job.getId(), job.getService());
 
-        builder.setExtras((PersistableBundle) job.getExtras().getRealBundle());
+        builder.setExtras((android.os.PersistableBundle) job.getExtras().getRealBundle());
         builder.setRequiresCharging(job.isRequireCharging());
         builder.setRequiresDeviceIdle(job.isRequireDeviceIdle());
         builder.setRequiredNetworkType(job.getNetworkType());
@@ -81,7 +81,7 @@ class JobSchedulerLollipopDelegate extends JobScheduler {
 
     private static JobInfo convertFromJobInfo(android.app.job.JobInfo job) {
         JobInfo.Builder builder = new JobInfo.Builder(job.getId(), job.getService());
-        builder.setExtras(new me.tatarka.support.job.PersistableBundle(job.getExtras()));
+        builder.setExtras(new PersistableBundle(job.getExtras()));
         builder.setRequiresCharging(job.isRequireCharging());
         builder.setRequiresDeviceIdle(job.isRequireDeviceIdle());
         builder.setRequiredNetworkType(job.getNetworkType());

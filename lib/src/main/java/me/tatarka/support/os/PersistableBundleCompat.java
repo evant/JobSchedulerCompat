@@ -1,4 +1,4 @@
-package me.tatarka.support.job;
+package me.tatarka.support.os;
 
 import android.os.BaseBundle;
 import android.os.Build;

@@ -8,21 +8,40 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.BatteryManager;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.support.v4.content.WakefulBroadcastReceiver;
 import android.support.v4.net.ConnectivityManagerCompat;
 import android.util.Log;
 import android.util.SparseArray;
+import android.util.Xml;
 
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlSerializer;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
+
+import me.tatarka.support.internal.util.FastXmlSerializer;
+import me.tatarka.support.internal.util.XmlUtils;
+import me.tatarka.support.os.PersistableBundle;
 
 /**
  * @hide *
@@ -44,11 +63,20 @@ public class JobServiceCompat extends Service {
     private static final int MSG_NETWORK_STATE_CHANGED = 3;
     private static final int MSG_POWER_STATE_CHANGED = 4;
 
+    private JobHandler handler;
     private AlarmManager am;
-    // TODO: the job state needs to be persisted in case the service is destroyed and then recreated.
-    private SparseArray<PendingIntent> scheduledJobs = new SparseArray<PendingIntent>();
+
     private SparseArray<JobServiceConnection> runningJobs = new SparseArray<JobServiceConnection>();
-    private List<JobInfo> jobsWaitingOnState = new ArrayList<JobInfo>();
+
+    private final Object handlerLock = new Object();
+
+    private void ensureHandler() {
+        synchronized (handlerLock) {
+            if (handler == null) {
+                handler = new JobHandler(getMainLooper());
+            }
+        }
+    }
 
     @Override
     public void onCreate() {
@@ -68,43 +96,55 @@ public class JobServiceCompat extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        switch (intent.getIntExtra(EXTRA_MSG, -1)) {
-            case MSG_SCHEDULE_JOB: {
-                JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
-                handleSchedule(job, startId);
-                break;
-            }
-            case MSG_START_JOB: {
-                JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
-                int numFailures = intent.getIntExtra(EXTRA_NUM_FAILURES, 0);
-                boolean runImmediately = intent.getBooleanExtra(EXTRA_RUN_IMMEDIATELY, false);
-                handleStartJob(job, numFailures, runImmediately);
-                break;
-            }
-            case MSG_CANCEL_JOB: {
-                int jobId = intent.getIntExtra(EXTRA_JOB_ID, 0);
-                handleCancelJob(jobId);
-                break;
-            }
-            case MSG_NETWORK_STATE_CHANGED: {
-                boolean metered = intent.getBooleanExtra(EXTRA_NETWORK_STATE_METERED, false);
-                handleNetworkStateChanged(intent, metered);
-                break;
-            }
-            case MSG_POWER_STATE_CHANGED: {
-                boolean connected = intent.getBooleanExtra(EXTRA_POWER_STATE_CONNECTED, false);
-                handlePowerStateChanged(intent, connected);
-                break;
-            }
-        }
+        ensureHandler();
+        int what = intent.getIntExtra(EXTRA_MSG, -1);
+        Message message = Message.obtain(handler, what, intent);
+        handler.handleMessage(message);
 
         return START_NOT_STICKY;
     }
 
-    private void handleSchedule(JobInfo job, int startId) {
-        PendingIntent pendingIntent = toPendingIntent(job, 0, false);
-        scheduledJobs.put(job.getId(), pendingIntent);
+    private class JobHandler extends Handler {
+        public JobHandler(Looper looper) {
+            super(looper);
+        }
 
+        @Override
+        public void handleMessage(Message msg) {
+            Intent intent = (Intent) msg.obj;
+            switch (msg.what) {
+                case MSG_SCHEDULE_JOB: {
+                    JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
+                    handleSchedule(job);
+                    break;
+                }
+                case MSG_START_JOB: {
+                    JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
+                    int numFailures = intent.getIntExtra(EXTRA_NUM_FAILURES, 0);
+                    boolean runImmediately = intent.getBooleanExtra(EXTRA_RUN_IMMEDIATELY, false);
+                    handleStartJob(job, numFailures, runImmediately);
+                    break;
+                }
+                case MSG_CANCEL_JOB: {
+                    int jobId = intent.getIntExtra(EXTRA_JOB_ID, 0);
+                    handleCancelJob(jobId);
+                    break;
+                }
+                case MSG_NETWORK_STATE_CHANGED: {
+                    boolean metered = intent.getBooleanExtra(EXTRA_NETWORK_STATE_METERED, false);
+                    handleNetworkStateChanged(intent, metered);
+                    break;
+                }
+                case MSG_POWER_STATE_CHANGED: {
+                    boolean connected = intent.getBooleanExtra(EXTRA_POWER_STATE_CONNECTED, false);
+                    handlePowerStateChanged(intent, connected);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void handleSchedule(JobInfo job) {
         long elapsedTime = SystemClock.elapsedRealtime();
 
         if (job.hasEarlyConstraint()) {
@@ -115,13 +155,10 @@ public class JobServiceCompat extends Service {
             am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTime + job.getMaxExecutionDelayMillis(), toPendingIntent(job, 0, true));
         }
 
-        stopSelfResult(startId);
+        stopIfFinished();
     }
 
     private void handleReschedule(JobInfo job, int numFailures) {
-        PendingIntent pendingIntent = toPendingIntent(job, numFailures, true);
-        scheduledJobs.put(job.getId(), pendingIntent);
-
         if (job.isRequireDeviceIdle()) {
             // TODO: different reschedule policy
             throw new UnsupportedOperationException("rescheduling idle tasks is not yet implemented");
@@ -146,26 +183,30 @@ public class JobServiceCompat extends Service {
 
         long elapsedTime = SystemClock.elapsedRealtime();
         am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTime + backoffTime, toPendingIntent(job, numFailures, true));
+
+        stopIfFinished();
     }
 
     private void handleCancelJob(int jobId) {
-        PendingIntent pendingIntent = scheduledJobs.get(jobId);
-        if (pendingIntent != null) {
-            scheduledJobs.remove(jobId);
-            am.cancel(pendingIntent);
+        PendingIntent pendingIntentFirst = toPendingIntentToCancel(jobId, false);
+        PendingIntent pendingIntentSecond = toPendingIntentToCancel(jobId, true);
 
-            JobServiceConnection runningJob = runningJobs.get(jobId);
-            if (runningJob != null) {
-                runningJob.stop();
-            }
+        if (pendingIntentFirst != null) {
+            am.cancel(pendingIntentFirst);
         }
+        if (pendingIntentSecond != null) {
+            am.cancel(pendingIntentSecond);
+        }
+
+        JobServiceConnection runningJob = runningJobs.get(jobId);
+        if (runningJob != null) {
+            runningJob.stop();
+        }
+
+        stopIfFinished();
     }
 
     private void handleStartJob(final JobInfo job, int numFailures, boolean runImmediately) {
-        if (scheduledJobs.get(job.getId()) == null) {
-            return; // Job already run.
-        }
-
         Intent intent = new Intent();
         intent.setComponent(job.getService());
 
@@ -175,21 +216,19 @@ public class JobServiceCompat extends Service {
         }
 
         if (!runImmediately) {
+            int requirementFlags = 0;
+            
             // Ensure network
             if (job.getNetworkType() != JobInfo.NETWORK_TYPE_NONE) {
                 ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
                 NetworkInfo netInfo = cm.getActiveNetworkInfo();
-                boolean hasNecessaryNetwork;
                 boolean connected = netInfo != null && netInfo.isConnectedOrConnecting();
-                hasNecessaryNetwork = connected
+                boolean hasNecessaryNetwork = connected
                         && (job.getNetworkType() != JobInfo.NETWORK_TYPE_UNMETERED
                         || !ConnectivityManagerCompat.isActiveNetworkMetered(cm));
 
                 if (!hasNecessaryNetwork) {
-                    // Register listener and fire job when network comes back online.
-                    jobsWaitingOnState.add(job);
-                    ReceiverUtils.enable(this, NetworkReceiver.class);
-                    return;
+                    requirementFlags |= JobPersister.FLAG_NETWORK;
                 }
             }
 
@@ -197,65 +236,84 @@ public class JobServiceCompat extends Service {
             if (job.isRequireCharging()) {
                 Intent i = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
                 int plugged = i.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-                boolean isCharging = plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB;
+                boolean hasNecessaryPower = plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB;
 
-                if (!isCharging) {
-                    // Register listener and fire job when device is plugged in.
-                    jobsWaitingOnState.add(job);
+                if (!hasNecessaryPower) {
+                    requirementFlags |= JobPersister.FLAG_POWER;
+                }
+            }
+
+            // Register listener and fire job requirements are met.
+            if (requirementFlags != 0) {
+                JobPersister.getInstance(this).addJob(job, requirementFlags);
+                
+                if ((requirementFlags & JobPersister.FLAG_NETWORK) == JobPersister.FLAG_NETWORK) {
+                    ReceiverUtils.enable(this, NetworkReceiver.class);
+                }
+                if ((requirementFlags & JobPersister.FLAG_POWER) == JobPersister.FLAG_POWER) {
                     ReceiverUtils.enable(this, PowerReceiver.class);
-                    return;
+                }
+                return;
+            }
+
+            // Ensure late constraint alarm is canceled
+            if (job.hasLateConstraint()) {
+                PendingIntent pendingIntent = toPendingIntentToCancel(job.getId(), true);
+                if (pendingIntent != null) {
+                    am.cancel(pendingIntent);
                 }
             }
         }
 
-        // Ensure other alarm is canceled
-        scheduledJobs.remove(job.getId());
-        am.cancel(toPendingIntent(job, 0, true));
-
         JobServiceConnection connection = new JobServiceConnection(job, numFailures);
         runningJobs.put(job.getId(), connection);
-        jobsWaitingOnState.remove(job);
         bindService(intent, connection, flags);
     }
 
     private void handleNetworkStateChanged(Intent intent, boolean metered) {
-        ArrayList<JobInfo> pendingJobs = new ArrayList<JobInfo>(jobsWaitingOnState);
-        jobsWaitingOnState.clear();
-        ListIterator<JobInfo> iter = pendingJobs.listIterator();
-        while (iter.hasNext()) {
-            JobInfo job = iter.next();
+        List<JobInfo> pendingNetworkJobs = JobPersister.getInstance(this).getJobs(JobPersister.FLAG_NETWORK);
+        for (JobInfo job : pendingNetworkJobs) {
             if (job.getNetworkType() == (metered ? JobInfo.NETWORK_TYPE_ANY : JobInfo.NETWORK_TYPE_UNMETERED)) {
                 handleStartJob(job, 0, false);
-                iter.remove();
+            } else {
+                JobPersister.getInstance(this).addJob(job, JobPersister.FLAG_NETWORK);
             }
         }
-        jobsWaitingOnState.addAll(pendingJobs);
         WakefulBroadcastReceiver.completeWakefulIntent(intent);
     }
 
     private void handlePowerStateChanged(Intent intent, boolean connected) {
-        ArrayList<JobInfo> pendingJobs = new ArrayList<JobInfo>(jobsWaitingOnState);
-        jobsWaitingOnState.clear();
-        ListIterator<JobInfo> iter = pendingJobs.listIterator();
-        while (iter.hasNext()) {
-            JobInfo job = iter.next();
+        List<JobInfo> pendingPowerJobs = JobPersister.getInstance(this).getJobs(JobPersister.FLAG_POWER);
+        for (JobInfo job : pendingPowerJobs) {
             if (job.isRequireCharging() && connected) {
                 handleStartJob(job, 0, false);
-                iter.remove();
+            } else {
+                JobPersister.getInstance(this).addJob(job, JobPersister.FLAG_POWER);
             }
         }
-        jobsWaitingOnState.addAll(pendingJobs);
         WakefulBroadcastReceiver.completeWakefulIntent(intent);
     }
 
     private PendingIntent toPendingIntent(JobInfo job, int numFailures, boolean runImmediately) {
         Intent intent = new Intent(this, JobServiceCompat.class)
-                .setAction(job.getId() + ":" + runImmediately + ":" + numFailures)
+                .setAction(job.getId() + ":" + runImmediately)
                 .putExtra(EXTRA_MSG, MSG_START_JOB)
                 .putExtra(EXTRA_JOB, job)
                 .putExtra(EXTRA_NUM_FAILURES, numFailures)
                 .putExtra(EXTRA_RUN_IMMEDIATELY, runImmediately);
-        return PendingIntent.getService(this, job.getId(), intent, 0);
+        return PendingIntent.getService(this, job.getId(), intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private PendingIntent toPendingIntentToCancel(int jobId, boolean runImmediately) {
+        Intent intent = new Intent(this, JobServiceCompat.class)
+                .setAction(jobId + ":" + runImmediately);
+        return PendingIntent.getService(this, jobId, intent, PendingIntent.FLAG_NO_CREATE);
+    }
+
+    private PendingIntent getNetworkStatePendingIntent() {
+        Intent intent = new Intent(this, JobServiceCompat.class)
+                .setAction("me.tatarka.support.job.NETWORK_STATE");
+        return PendingIntent.getService(this, 0, intent, 0);
     }
 
     static void schedule(Context context, JobInfo job) {
@@ -361,11 +419,159 @@ public class JobServiceCompat extends Service {
                 unbindService(connection);
             }
             runningJobs.remove(jobId);
+            stopIfFinished();
+        }
+    }
 
-            // TODO: should always stop self, but for now don't so that pendingJobs doesn't get cleared.
-//            if (runningJobs.size() == 0) {
-//                stopSelf();
-//            }
+    private void stopIfFinished() {
+        if (runningJobs.size() == 0) {
+            stopSelf();
+        }
+    }
+
+    private static class JobPersister {
+        static final int FLAG_NETWORK = 1;
+        static final int FLAG_POWER = 2;
+        static final int FLAG_BOOT = 4;
+
+        private static final String ID = "id";
+        private static final String EXTRAS = "extras";
+        private static final String SERVICE = "service";
+        private static final String REQURIE_CHARGING = "requireCharging";
+        private static final String REQUIRE_DEVICE_IDLE = "requireDeviceIdle";
+        private static final String NETWORK_TYPE = "networkType";
+        private static final String MIN_LATENCY_MILLIS = "minLatencyMillis";
+        private static final String MAX_EXECUTION_DELAY_MILLIS = "maxExecutionDelayMillis";
+        private static final String PERIODIC = "periodic";
+        private static final String PERSISTED = "persisted";
+        private static final String INTERVAL_MILLIS = "intervalMillis";
+        private static final String INITIAL_BACKOFF_MILLIS = "initialBackoffMillis";
+        private static final String BACKOFF_POLICY = "backoffPolicy";
+
+        private static JobPersister INSTANCE;
+
+        static JobPersister getInstance(Context context) {
+            if (INSTANCE == null) {
+                INSTANCE = new JobPersister(context);
+            }
+            return INSTANCE;
+        }
+
+        private Context context;
+        private SharedPreferences sharedPrefs;
+
+        JobPersister(Context context) {
+            this.context = context.getApplicationContext();
+            sharedPrefs = context.getSharedPreferences("me.tatarka.support.job.SHARE_PREFS", MODE_PRIVATE);
+        }
+
+        void addJob(JobInfo job, int flag) {
+            try {
+                writeJob(job);
+                sharedPrefs.edit().putInt(Integer.toString(job.getId()), flag).commit();
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage(), e);
+            } catch (XmlPullParserException e) {
+                Log.e(TAG, e.getMessage(), e);
+            }
+        }
+
+        private void writeJob(JobInfo job) throws IOException, XmlPullParserException {
+            FileOutputStream os = null;
+            try {
+                os = context.openFileOutput(Integer.toString(job.getId()), MODE_PRIVATE);
+                XmlSerializer serializer = new FastXmlSerializer();
+                serializer.setOutput(os, "utf-8");
+                serializer.startDocument(null, true);
+                serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+                XmlUtils.writeMapXml(jobToMap(job), null, serializer, job.getExtras());
+                serializer.endDocument();
+            } finally {
+                if (os != null) os.close();
+            }
+        }
+
+        private JobInfo readJob(int jobId) throws IOException, XmlPullParserException {
+            FileInputStream in = null;
+            try {
+                in = context.openFileInput(Integer.toString(jobId));
+                XmlPullParser parser = Xml.newPullParser();
+                parser.setInput(in, null);
+                Map<String, ?> map = XmlUtils.readThisMapXml(parser, null, new String[1], new PersistableBundle.MyReadMapCallback());
+                return jobFromMap(map);
+            } finally {
+                if (in != null) in.close();
+            }
+        }
+
+        private static Map<String, ?> jobToMap(JobInfo job) {
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put(ID, job.getId());
+            map.put(EXTRAS, job.getExtras());
+            map.put(SERVICE, job.getService().flattenToString());
+            map.put(REQURIE_CHARGING, job.isRequireCharging());
+            map.put(REQUIRE_DEVICE_IDLE, job.isRequireDeviceIdle());
+            map.put(NETWORK_TYPE, job.getNetworkType());
+            map.put(MIN_LATENCY_MILLIS, job.getMinLatencyMillis());
+            map.put(MAX_EXECUTION_DELAY_MILLIS, job.getMaxExecutionDelayMillis());
+            map.put(PERIODIC, job.isPeriodic());
+            map.put(PERSISTED, job.isPersisted());
+            map.put(INTERVAL_MILLIS, job.getIntervalMillis());
+            map.put(INITIAL_BACKOFF_MILLIS, job.getInitialBackoffMillis());
+            map.put(BACKOFF_POLICY, job.getBackoffPolicy());
+            return map;
+        }
+
+        private static JobInfo jobFromMap(Map<String, ?> map) {
+            JobInfo.Builder builder = new JobInfo.Builder((Integer) map.get(ID), ComponentName.unflattenFromString((String) map.get(SERVICE)));
+            builder.setExtras((PersistableBundle) map.get(EXTRAS));
+            builder.setRequiresCharging((Boolean) map.get(REQURIE_CHARGING));
+            builder.setRequiresDeviceIdle((Boolean) map.get(REQUIRE_DEVICE_IDLE));
+            builder.setRequiredNetworkType((Integer) map.get(NETWORK_TYPE));
+
+            int minLatenceyMillis = (Integer) map.get(MIN_LATENCY_MILLIS);
+            if (minLatenceyMillis != 0) {
+                builder.setMinimumLatency(minLatenceyMillis);
+            }
+
+            int maxExecutionDelayMillis = (Integer) map.get(MAX_EXECUTION_DELAY_MILLIS);
+            if (maxExecutionDelayMillis != 0) {
+                builder.setOverrideDeadline(maxExecutionDelayMillis);
+            }
+
+            if ((Boolean) map.get(PERIODIC)) {
+                builder.setPeriodic((Long) map.get(INTERVAL_MILLIS));
+            }
+
+            builder.setPersisted((Boolean) map.get(PERSISTED));
+            builder.setBackoffCriteria((Long) map.get(INITIAL_BACKOFF_MILLIS), (Integer) map.get(BACKOFF_POLICY));
+
+            return builder.build();
+        }
+
+        List<JobInfo> getJobs(int flag) {
+            SharedPreferences.Editor editor = sharedPrefs.edit();
+            try {
+                Map<String, ?> prefMap = sharedPrefs.getAll();
+                List<JobInfo> jobs = new ArrayList<JobInfo>();
+                for (Map.Entry<String, ?> entry : prefMap.entrySet()) {
+                    int flags = (Integer) entry.getValue();
+                    if ((flags & flag) == flag) {
+                        int jobId = Integer.parseInt(entry.getKey());
+                        jobs.add(readJob(jobId));
+                        editor.remove(entry.getKey());
+                    }
+                }
+                return jobs;
+            } catch (XmlPullParserException e) {
+                Log.e(TAG, e.getMessage(), e);
+                return Collections.emptyList();
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage(), e);
+                return Collections.emptyList();
+            } finally {
+                editor.commit();
+            }
         }
     }
 }

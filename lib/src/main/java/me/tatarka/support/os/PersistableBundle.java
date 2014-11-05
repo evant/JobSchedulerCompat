@@ -1,15 +1,28 @@
-package me.tatarka.support.job;
+package me.tatarka.support.os;
 
 import android.os.BaseBundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlSerializer;
+
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
+
+import me.tatarka.support.internal.util.XmlUtils;
 
 /**
  * Created by evan on 10/28/14.
  */
-public class PersistableBundle implements Parcelable, Cloneable {
+public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.WriteMapCallback {
+    private static final String TAG_PERSISTABLEMAP = "pbundle_as_map";
     public static final PersistableBundle EMPTY = new PersistableBundle(PersistableBundleCompat.EMPTY);
 
     private BaseBundle bundle;
@@ -26,8 +39,39 @@ public class PersistableBundle implements Parcelable, Cloneable {
         bundle = PersistableBundleCompat.newInstance(extras.bundle);
     }
 
-    PersistableBundle(BaseBundle extras) {
+    /** @hide */
+    public PersistableBundle(BaseBundle extras) {
         bundle = extras;
+    }
+
+    /**
+     * Constructs a PersistableBundle containing the mappings passed in.
+     *
+     * @param map a Map containing only those items that can be persisted.
+     * @throws IllegalArgumentException if any element of #map cannot be persisted.
+     */
+    private PersistableBundle(Map<String, Object> map) {
+        // First stuff everything in.
+        putAll(map);
+
+        // Now verify each item throwing an exception if there is a violation.
+        Set<String> keys = map.keySet();
+        Iterator<String> iterator = keys.iterator();
+        while (iterator.hasNext()) {
+            String key = iterator.next();
+            Object value = map.get(key);
+            if (value instanceof Map) {
+                // Fix up any Maps by replacing them with PersistableBundles.
+                putPersistableBundle(key, new PersistableBundle((Map<String, Object>) value));
+            } else if (!(value instanceof Integer) && !(value instanceof Long) &&
+                    !(value instanceof Double) && !(value instanceof String) &&
+                    !(value instanceof int[]) && !(value instanceof long[]) &&
+                    !(value instanceof double[]) && !(value instanceof String[]) &&
+                    !(value instanceof PersistableBundle) && (value != null)) {
+                throw new IllegalArgumentException("Bad value in PersistableBundle key=" + key +
+                        " value=" + value);
+            }
+        }
     }
 
     /**
@@ -89,6 +133,27 @@ public class PersistableBundle implements Parcelable, Cloneable {
      */
     public void putAll(PersistableBundle bundle) {
         bundle.putAll(bundle);
+    }
+
+    /**
+     * Inserts all mappings from the given Map into this BaseBundle.
+     *
+     * @param map a Map
+     */
+    void putAll(Map map) {
+        // This is a protected method on BaseBundle, cheat with reflection.
+        Method method;
+        try {
+            method = BaseBundle.class.getDeclaredMethod("putAll", Map.class);
+            method.setAccessible(true);
+            method.invoke(map);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -403,5 +468,64 @@ public class PersistableBundle implements Parcelable, Cloneable {
 
     public static PersistableBundle readPersistableBundle(Parcel parcel) {
         return new PersistableBundle(PersistableBundleCompat.read(parcel));
+    }
+
+    /**
+     * @hide
+     */
+    public static class MyReadMapCallback implements XmlUtils.ReadMapCallback {
+        @Override
+        public Object readThisUnknownObjectXml(XmlPullParser in, String tag)
+                throws XmlPullParserException, IOException {
+            if (TAG_PERSISTABLEMAP.equals(tag)) {
+                return restoreFromXml(in);
+            }
+            throw new XmlPullParserException("Unknown tag=" + tag);
+        }
+    }
+
+    /**
+     * @hide
+     */
+    @Override
+    public void writeUnknownObject(Object v, String name, XmlSerializer out) throws XmlPullParserException, IOException {
+        if (v instanceof PersistableBundle) {
+            out.startTag(null, TAG_PERSISTABLEMAP);
+            out.attribute(null, "name", name);
+            ((PersistableBundle) v).saveToXml(out);
+            out.endTag(null, TAG_PERSISTABLEMAP);
+        } else {
+            throw new XmlPullParserException("Unknown Object o=" + v);
+        }
+    }
+
+    /**
+     * @hide
+     */
+    public void saveToXml(XmlSerializer out) throws IOException, XmlPullParserException {
+        Map map = new HashMap();
+        for (String key : bundle.keySet()) {
+            map.put(key, bundle.get(key));
+        }
+        XmlUtils.writeMapXml(map, out, this);
+    }
+
+    /**
+     * @hide
+     */
+    public static PersistableBundle restoreFromXml(XmlPullParser in) throws IOException,
+            XmlPullParserException {
+        final int outerDepth = in.getDepth();
+        final String startTag = in.getName();
+        final String[] tagName = new String[1];
+        int event;
+        while (((event = in.next()) != XmlPullParser.END_DOCUMENT) &&
+                (event != XmlPullParser.END_TAG || in.getDepth() < outerDepth)) {
+            if (event == XmlPullParser.START_TAG) {
+                return new PersistableBundle((Map<String, Object>)
+                        XmlUtils.readThisMapXml(in, startTag, tagName, new MyReadMapCallback()));
+            }
+        }
+        return EMPTY;
     }
 }

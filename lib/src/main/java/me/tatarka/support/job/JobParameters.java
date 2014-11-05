@@ -4,6 +4,8 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import me.tatarka.support.os.PersistableBundle;
+
 /**
  * Created by evantatarka on 10/23/14.
  */

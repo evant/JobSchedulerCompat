@@ -19,6 +19,8 @@ package me.tatarka.support.job;
 import android.content.ComponentName;
 import android.os.*;
 
+import me.tatarka.support.os.PersistableBundle;
+
 /**
  * Container of data passed to the {@link android.app.job.JobScheduler} fully encapsulating the
  * parameters required to schedule work against the calling application. These are constructed
