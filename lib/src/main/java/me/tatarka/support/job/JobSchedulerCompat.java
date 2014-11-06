@@ -17,34 +17,28 @@ class JobSchedulerCompat extends JobScheduler {
     }
 
     private Context context;
-    private List<JobInfo> pendingJobs = new ArrayList<JobInfo>();
+    private JobPersister jobPersister;
 
     private JobSchedulerCompat(Context context) {
         this.context = context.getApplicationContext();
+        this.jobPersister = JobPersister.getInstance(context);
     }
 
     @Override
     public synchronized void cancel(int jobid) {
         JobServiceCompat.cancel(context, jobid);
-        for (int i = pendingJobs.size() - 1; i >= 0; i--) {
-            if (pendingJobs.get(i).getId() == jobid) {
-                pendingJobs.remove(i);
-                break;
-            }
-        }
     }
 
     @Override
     public synchronized void cancelAll() {
-        for (JobInfo job : pendingJobs) {
+        for (JobInfo job : jobPersister.getPendingJobs()) {
             JobServiceCompat.cancel(context, job.getId());
         }
-        pendingJobs.clear();
     }
 
     @Override
     public synchronized List<JobInfo> getAllPendingJobs() {
-        return new ArrayList<JobInfo>(pendingJobs);
+        return jobPersister.getPendingJobs();
     }
 
     @Override

@@ -9,8 +9,6 @@ import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -25,7 +23,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
     private static final String TAG_PERSISTABLEMAP = "pbundle_as_map";
     public static final PersistableBundle EMPTY = new PersistableBundle(PersistableBundleCompat.EMPTY);
 
-    private BaseBundle bundle;
+    private Object bundle;
 
     public PersistableBundle() {
         bundle = PersistableBundleCompat.newInstance();
@@ -39,8 +37,10 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
         bundle = PersistableBundleCompat.newInstance(extras.bundle);
     }
 
-    /** @hide */
-    public PersistableBundle(BaseBundle extras) {
+    /**
+     * @hide
+     */
+    public PersistableBundle(Object extras) {
         bundle = extras;
     }
 
@@ -80,21 +80,21 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return the number of mappings as an int.
      */
     public int size() {
-        return bundle.size();
+        return PersistableBundleCompat.size(bundle);
     }
 
     /**
      * Returns true if the mapping of this Bundle is empty, false otherwise.
      */
     public boolean isEmpty() {
-        return bundle.isEmpty();
+        return PersistableBundleCompat.isEmpty(bundle);
     }
 
     /**
      * Removes all elements from the mapping of this Bundle.
      */
     public void clear() {
-        bundle.clear();
+        PersistableBundleCompat.clear(bundle);
     }
 
     /**
@@ -104,7 +104,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return true if the key is part of the mapping, false otherwise
      */
     public boolean containsKey(String key) {
-        return bundle.containsKey(key);
+        return PersistableBundleCompat.containsKey(bundle, key);
     }
 
     /**
@@ -114,7 +114,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return an Object, or null
      */
     public Object get(String key) {
-        return bundle.get(key);
+        return PersistableBundleCompat.get(bundle, key);
     }
 
     /**
@@ -123,7 +123,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param key a String key
      */
     public void remove(String key) {
-        bundle.remove(key);
+        PersistableBundleCompat.remove(bundle, key);
     }
 
     /**
@@ -132,7 +132,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param bundle a PersistableBundle
      */
     public void putAll(PersistableBundle bundle) {
-        bundle.putAll(bundle);
+        PersistableBundleCompat.putAll(this.bundle, bundle.bundle);
     }
 
     /**
@@ -141,19 +141,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param map a Map
      */
     void putAll(Map map) {
-        // This is a protected method on BaseBundle, cheat with reflection.
-        Method method;
-        try {
-            method = BaseBundle.class.getDeclaredMethod("putAll", Map.class);
-            method.setAccessible(true);
-            method.invoke(map);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+        PersistableBundleCompat.putAll(bundle, map);
     }
 
     /**
@@ -162,7 +150,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a Set of String keys
      */
     public Set<String> keySet() {
-        return bundle.keySet();
+        return PersistableBundleCompat.keySet(bundle);
     }
 
     /**
@@ -173,7 +161,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param value an int, or null
      */
     public void putInt(String key, int value) {
-        bundle.putInt(key, value);
+        PersistableBundleCompat.putInt(bundle, key, value);
     }
 
     /**
@@ -184,7 +172,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param value a long
      */
     public void putLong(String key, long value) {
-        bundle.putLong(key, value);
+        PersistableBundleCompat.putLong(bundle, key, value);
     }
 
     /**
@@ -195,7 +183,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param value a double
      */
     public void putDouble(String key, double value) {
-        bundle.putDouble(key, value);
+        PersistableBundleCompat.putDouble(bundle, key, value);
     }
 
     /**
@@ -206,7 +194,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param value a String, or null
      */
     public void putString(String key, String value) {
-        bundle.putString(key, value);
+        PersistableBundleCompat.putString(bundle, key, value);
     }
 
     /**
@@ -217,7 +205,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param value an int array object, or null
      */
     public void putIntArray(String key, int[] value) {
-        bundle.putIntArray(key, value);
+        PersistableBundleCompat.putIntArray(bundle, key, value);
     }
 
     /**
@@ -228,7 +216,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param value a long array object, or null
      */
     public void putLongArray(String key, long[] value) {
-        bundle.putLongArray(key, value);
+        PersistableBundleCompat.putLongArray(bundle, key, value);
     }
 
     /**
@@ -239,7 +227,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param value a double array object, or null
      */
     public void putDoubleArray(String key, double[] value) {
-        bundle.putDoubleArray(key, value);
+        PersistableBundleCompat.putDoubleArray(bundle, key, value);
     }
 
     /**
@@ -250,7 +238,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param value a String array object, or null
      */
     public void putStringArray(String key, String[] value) {
-        bundle.putStringArray(key, value);
+        PersistableBundleCompat.putStringArray(bundle, key, value);
     }
 
     /**
@@ -261,7 +249,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return an int value
      */
     public int getInt(String key) {
-        return bundle.getInt(key);
+        return PersistableBundleCompat.getInt(bundle, key);
     }
 
     /**
@@ -273,7 +261,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return an int value
      */
     public int getInt(String key, int defaultValue) {
-        return bundle.getInt(key, defaultValue);
+        return PersistableBundleCompat.getInt(bundle, key, defaultValue);
     }
 
     /**
@@ -284,7 +272,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a long value
      */
     public long getLong(String key) {
-        return bundle.getLong(key);
+        return PersistableBundleCompat.getLong(bundle, key);
     }
 
     /**
@@ -296,7 +284,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a long value
      */
     public long getLong(String key, long defaultValue) {
-        return bundle.getLong(key, defaultValue);
+        return PersistableBundleCompat.getLong(bundle, key, defaultValue);
     }
 
     /**
@@ -307,7 +295,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a double value
      */
     public double getDouble(String key) {
-        return bundle.getDouble(key);
+        return PersistableBundleCompat.getDouble(bundle, key);
     }
 
     /**
@@ -319,7 +307,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a double value
      */
     public double getDouble(String key, double defaultValue) {
-        return bundle.getDouble(key, defaultValue);
+        return PersistableBundleCompat.getDouble(bundle, key, defaultValue);
     }
 
     /**
@@ -330,7 +318,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a String value, or null
      */
     public String getString(String key) {
-        return bundle.getString(key);
+        return PersistableBundleCompat.getString(bundle, key);
     }
 
     /**
@@ -345,7 +333,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * object is currently mapped to that key.
      */
     public String getString(String key, String defaultValue) {
-        return bundle.getString(key, defaultValue);
+        return PersistableBundleCompat.getString(bundle, key, defaultValue);
     }
 
     /**
@@ -356,7 +344,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return an int[] value, or null
      */
     public int[] getIntArray(String key) {
-        return bundle.getIntArray(key);
+        return PersistableBundleCompat.getIntArray(bundle, key);
     }
 
     /**
@@ -367,7 +355,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a long[] value, or null
      */
     public long[] getLongArray(String key) {
-        return bundle.getLongArray(key);
+        return PersistableBundleCompat.getLongArray(bundle, key);
     }
 
     /**
@@ -378,7 +366,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a double[] value, or null
      */
     public double[] getDoubleArray(String key) {
-        return bundle.getDoubleArray(key);
+        return PersistableBundleCompat.getDoubleArray(bundle, key);
     }
 
     /**
@@ -389,7 +377,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a String[] value, or null
      */
     public String[] getStringArray(String key) {
-        return bundle.getStringArray(key);
+        return PersistableBundleCompat.getStringArray(bundle, key);
     }
 
     /**
@@ -424,12 +412,12 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
     }
 
     /**
-     * Gets the underlying {@link android.os.BaseBundle}. This is a {@link
+     * Gets the underlying bundle. This is a {@link
      * android.os.PersistableBundle} on api 21+ and {@link android.os.Bundle} on lower apis.
      *
      * @return the underlying bundle
      */
-    public BaseBundle getRealBundle() {
+    public Object getRealBundle() {
         return bundle;
     }
 
@@ -504,8 +492,8 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      */
     public void saveToXml(XmlSerializer out) throws IOException, XmlPullParserException {
         Map map = new HashMap();
-        for (String key : bundle.keySet()) {
-            map.put(key, bundle.get(key));
+        for (String key : keySet()) {
+            map.put(key, get(key));
         }
         XmlUtils.writeMapXml(map, out, this);
     }

@@ -17,7 +17,7 @@ public class NetworkReceiver extends WakefulBroadcastReceiver {
         NetworkInfo netInfo = cm.getActiveNetworkInfo();
         if (netInfo != null && netInfo.isConnectedOrConnecting()) {
             ReceiverUtils.disable(context, getClass());
-            startWakefulService(context, JobServiceCompat.networkStateChangedIntent(context, ConnectivityManagerCompat.isActiveNetworkMetered(cm)));
+            startWakefulService(context, JobServiceCompat.requiredStateChangedIntent(context));
         }
     }
 }
