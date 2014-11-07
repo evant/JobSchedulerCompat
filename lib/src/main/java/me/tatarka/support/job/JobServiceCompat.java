@@ -1,6 +1,7 @@
 package me.tatarka.support.job;
 
 import android.app.AlarmManager;
+import android.app.IntentService;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ComponentName;
@@ -28,7 +29,7 @@ import java.util.List;
 /**
  * @hide *
  */
-public class JobServiceCompat extends Service {
+public class JobServiceCompat extends IntentService {
     static final String TAG = "JobServiceCompat";
 
     private static final String EXTRA_MSG = "EXTRA_MSG";
@@ -36,28 +37,18 @@ public class JobServiceCompat extends Service {
     private static final String EXTRA_JOB_ID = "EXTRA_JOB_ID";
     private static final String EXTRA_RUN_IMMEDIATELY = "EXTRA_RUN_IMMEDIATELY";
     private static final String EXTRA_START_TIME = "EXTRA_START_TIME";
-    private static final String EXTRA_NETWORK_STATE_METERED = "EXTRA_NETWORK_STATE_METERED";
-    private static final String EXTRA_POWER_STATE_CONNECTED = "EXTRA_POWER_STATE_CONNECTED";
     private static final String EXTRA_NUM_FAILURES = "EXTRA_NUM_FAILURES";
 
     private static final int MSG_SCHEDULE_JOB = 0;
-    private static final int MSG_START_JOB = 1;
+    private static final int MSG_RESCHEDULE_JOB = 1;
     private static final int MSG_CANCEL_JOB = 2;
     private static final int MSG_REQUIRED_STATE_CHANGED = 3;
+    private static final int MSG_CHECK_JOB_READY = 4;
 
-    private JobHandler handler;
     private AlarmManager am;
 
-    private SparseArray<JobServiceConnection> runningJobs = new SparseArray<JobServiceConnection>();
-
-    private final Object handlerLock = new Object();
-
-    private void ensureHandler() {
-        synchronized (handlerLock) {
-            if (handler == null) {
-                handler = new JobHandler(getMainLooper());
-            }
-        }
+    public JobServiceCompat() {
+        super("JobServiceCompat");
     }
 
     @Override
@@ -67,56 +58,36 @@ public class JobServiceCompat extends Service {
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        ensureHandler();
-        int what = intent.getIntExtra(EXTRA_MSG, -1);
-        Message message = Message.obtain(handler, what, intent);
-        handler.handleMessage(message);
-
-        return START_NOT_STICKY;
-    }
-
-    private class JobHandler extends Handler {
-        public JobHandler(Looper looper) {
-            super(looper);
-        }
-
-        @Override
-        public void handleMessage(Message msg) {
-            Intent intent = (Intent) msg.obj;
-            switch (msg.what) {
-                case MSG_SCHEDULE_JOB: {
-                    JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
-                    handleSchedule(job);
-                    break;
-                }
-                case MSG_START_JOB: {
-                    JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
-                    long startTime = intent.getLongExtra(EXTRA_START_TIME, 0);
-                    int numFailures = intent.getIntExtra(EXTRA_NUM_FAILURES, 0);
-                    boolean runImmediately = intent.getBooleanExtra(EXTRA_RUN_IMMEDIATELY, false);
-                    handleStartJob(job, startTime, numFailures, runImmediately);
-                    break;
-                }
-                case MSG_CANCEL_JOB: {
-                    int jobId = intent.getIntExtra(EXTRA_JOB_ID, 0);
-                    handleCancelJob(jobId);
-                    break;
-                }
-                case MSG_REQUIRED_STATE_CHANGED: {
-                    handleRequiredStateChanged(intent);
-                    break;
-                }
+    protected void onHandleIntent(Intent intent) {
+        int msg = intent.getIntExtra(EXTRA_MSG, -1);
+        switch (msg) {
+            case MSG_SCHEDULE_JOB: {
+                JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
+                handleSchedule(job);
+                break;
+            }
+            case MSG_RESCHEDULE_JOB: {
+                JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
+                int numFailures = intent.getIntExtra(EXTRA_NUM_FAILURES, 0);
+                handleReschedule(job, numFailures);
+                break;
+            }
+            case MSG_CANCEL_JOB: {
+                int jobId = intent.getIntExtra(EXTRA_JOB_ID, 0);
+                handleCancelJob(jobId);
+                break;
+            }
+            case MSG_REQUIRED_STATE_CHANGED: {
+                handleRequiredStateChanged(intent);
+                break;
+            }
+            case MSG_CHECK_JOB_READY: {
+                JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
+                long startTime = intent.getLongExtra(EXTRA_START_TIME, 0);
+                int numFailures = intent.getIntExtra(EXTRA_NUM_FAILURES, 0);
+                boolean runImmediately = intent.getBooleanExtra(EXTRA_RUN_IMMEDIATELY, false);
+                handleCheckJobReady(job, startTime, numFailures, runImmediately);
+                break;
             }
         }
     }
@@ -142,8 +113,6 @@ public class JobServiceCompat extends Service {
         if (job.isRequireCharging()) {
             ReceiverUtils.enable(this, PowerReceiver.class);
         }
-
-        stopIfFinished();
     }
 
     private void handleReschedule(JobInfo job, int numFailures) {
@@ -171,62 +140,43 @@ public class JobServiceCompat extends Service {
 
         long startTime = SystemClock.elapsedRealtime();
         am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, startTime + backoffTime, toPendingIntent(job, startTime, numFailures, true));
-
-        stopIfFinished();
     }
 
     private void handleCancelJob(int jobId) {
-        JobPersister.getInstance(this).removePendingJob(jobId);
-
-        PendingIntent pendingIntent = toExistingPendingIntent(jobId);
-
-        if (pendingIntent != null) {
-            am.cancel(pendingIntent);
-        }
-
-        JobServiceConnection runningJob = runningJobs.get(jobId);
-        if (runningJob != null) {
-            runningJob.stop();
-        }
-
-        stopIfFinished();
+        unscheduleJob(jobId);
+        JobSchedulerService.stopJob(this, jobId);
     }
 
-    private void handleStartJob(final JobInfo job, long startTime, int numFailures, boolean runImmediately) {
+    private void handleCheckJobReady(final JobInfo job, long startTime, int numFailures, boolean runImmediately) {
         boolean hasRequiredNetwork = hasRequiredNetwork(job);
         boolean hasRequiredPowerState = hasRequiredPowerState(job);
-        
+
         if (runImmediately || (hasRequiredNetwork && hasRequiredPowerState)) {
-            JobPersister.getInstance(this).removePendingJob(job.getId());
-
-            Intent intent = new Intent();
-            intent.setComponent(job.getService());
-
-            int flags = BIND_AUTO_CREATE;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-                flags |= BIND_WAIVE_PRIORITY;
-            }
-
-            JobServiceConnection connection = new JobServiceConnection(job, numFailures);
-            runningJobs.put(job.getId(), connection);
-            bindService(intent, connection, flags);
+            unscheduleJob(job.getId());
+            JobSchedulerService.startJob(this, job, startTime, numFailures);
         } else {
             if (!hasRequiredNetwork) {
                 ReceiverUtils.enable(this, NetworkReceiver.class);
             }
-            
+
             if (!hasRequiredPowerState) {
                 ReceiverUtils.enable(this, PowerReceiver.class);
             }
-            
+
             if (job.hasLateConstraint()) {
                 am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, startTime + job.getMaxExecutionDelayMillis(), toPendingIntent(job, startTime, numFailures, true));
             } else {
                 // Ensure we have a pending intent for when required state changes.
                 toPendingIntent(job, startTime, numFailures, false);
             }
+        }
+    }
 
-            stopIfFinished();
+    private void unscheduleJob(int jobId) {
+        JobPersister.getInstance(this).removePendingJob(jobId);
+        PendingIntent pendingIntent = toExistingPendingIntent(jobId);
+        if (pendingIntent != null) {
+            am.cancel(pendingIntent);
         }
     }
 
@@ -273,12 +223,12 @@ public class JobServiceCompat extends Service {
     private PendingIntent toPendingIntent(JobInfo job, long startTime, int numFailures, boolean runImmediately) {
         Intent intent = new Intent(this, JobServiceCompat.class)
                 .setAction(Integer.toString(job.getId()))
-                .putExtra(EXTRA_MSG, MSG_START_JOB)
+                .putExtra(EXTRA_MSG, MSG_CHECK_JOB_READY)
                 .putExtra(EXTRA_JOB, job)
                 .putExtra(EXTRA_START_TIME, startTime)
                 .putExtra(EXTRA_NUM_FAILURES, numFailures)
                 .putExtra(EXTRA_RUN_IMMEDIATELY, runImmediately);
-        return PendingIntent.getService(this, job.getId(), intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_ONE_SHOT);
+        return PendingIntent.getService(this, job.getId(), intent, PendingIntent.FLAG_CANCEL_CURRENT);
     }
 
     private PendingIntent toExistingPendingIntent(int jobId) {
@@ -294,6 +244,14 @@ public class JobServiceCompat extends Service {
                         .putExtra(EXTRA_JOB, job));
     }
 
+    static void reschedule(Context context, JobInfo job, int numFailures) {
+        context.startService(
+                new Intent(context, JobServiceCompat.class)
+                        .putExtra(EXTRA_MSG, MSG_RESCHEDULE_JOB)
+                        .putExtra(EXTRA_JOB, job)
+                        .putExtra(EXTRA_NUM_FAILURES, numFailures));
+    }
+
     static void cancel(Context context, int jobId) {
         context.startService(
                 new Intent(context, JobServiceCompat.class)
@@ -304,92 +262,5 @@ public class JobServiceCompat extends Service {
     static Intent requiredStateChangedIntent(Context context) {
         return new Intent(context, JobServiceCompat.class)
                 .putExtra(EXTRA_MSG, MSG_REQUIRED_STATE_CHANGED);
-    }
-
-    private class JobServiceConnection implements ServiceConnection {
-        JobInfo job;
-        JobParameters jobParams;
-        IJobService jobService;
-
-        JobServiceConnection(final JobInfo job, final int numFailures) {
-            this.job = job;
-            this.jobParams = new JobParameters(new IJobCallback.Stub() {
-                @Override
-                public void jobFinished(int jobId, boolean needsReschedule) throws RemoteException {
-                    finishJob(jobId, JobServiceConnection.this);
-
-                    if (needsReschedule) {
-                        handleReschedule(job, numFailures + 1);
-                    } else if (runningJobs.size() == 0) {
-                        stopSelf();
-                    }
-                }
-
-                @Override
-                public void acknowledgeStartMessage(int jobId, boolean workOngoing) throws RemoteException {
-                    if (!workOngoing) {
-                        finishJob(jobId, JobServiceConnection.this);
-                        if (runningJobs.size() == 0) {
-                            stopSelf();
-                        }
-                    }
-                }
-
-                @Override
-                public void acknowledgeStopMessage(int jobId, boolean reschedule) throws RemoteException {
-                    finishJob(jobId, JobServiceConnection.this);
-
-                    if (reschedule) {
-                        handleReschedule(job, numFailures + 1);
-                    } else if (runningJobs.size() == 0) {
-                        stopSelf();
-                    }
-                }
-            }, job.getId(), job.getExtras(), false);
-        }
-
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            jobService = (IJobService) service;
-
-            try {
-                jobService.startJob(jobParams);
-            } catch (Exception e) {
-                Log.e(TAG, "Error while starting job: " + job.getId());
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            runningJobs.remove(job.getId());
-            jobService = null;
-            jobParams = null;
-        }
-
-        void stop() {
-            if (jobService != null) {
-                try {
-                    jobService.stopJob(jobParams);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error while stopping job: " + job.getId());
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-
-        private void finishJob(int jobId, JobServiceConnection connection) {
-            if (runningJobs.get(jobId) != null) {
-                unbindService(connection);
-            }
-            runningJobs.remove(jobId);
-            stopIfFinished();
-        }
-    }
-
-    private void stopIfFinished() {
-        if (runningJobs.size() == 0) {
-            stopSelf();
-        }
     }
 }

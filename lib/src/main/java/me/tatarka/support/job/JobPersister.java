@@ -9,10 +9,14 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -106,8 +110,28 @@ class JobPersister {
             serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
             XmlUtils.writeMapXml(jobToMap(job), null, serializer, job.getExtras());
             serializer.endDocument();
+            // Print out what we just wrote for debugging
+//            debugWriteJob(job.getId());
         } finally {
             if (os != null) os.close();
+        }
+    }
+
+    private void debugWriteJob(int jobId) throws IOException {
+        FileInputStream in = null;
+        try {
+            in = context.openFileInput(Integer.toString(jobId));
+
+            BufferedReader r = new BufferedReader(new InputStreamReader(in));
+            StringBuilder total = new StringBuilder();
+            String line;
+            while ((line = r.readLine()) != null) {
+                total.append(line);
+            }
+
+            Log.d("JobPersister", total.toString());
+        } finally {
+            if (in != null) in.close();
         }
     }
 
@@ -117,7 +141,13 @@ class JobPersister {
             in = context.openFileInput(Integer.toString(jobId));
             XmlPullParser parser = Xml.newPullParser();
             parser.setInput(in, null);
-            Map<String, ?> map = XmlUtils.readThisMapXml(parser, null, new String[1], new PersistableBundle.MyReadMapCallback());
+
+            // We need to move the parser until after the "map" tag. There may be a better way to
+            // do this;
+            do { parser.nextTag(); } while (!"map".equals(parser.getName()));
+            parser.nextTag();
+
+            Map<String, ?> map = XmlUtils.readThisMapXml(parser, "map", new String[1], new PersistableBundle.MyReadMapCallback());
             return jobFromMap(map);
         } finally {
             if (in != null) in.close();
@@ -149,12 +179,12 @@ class JobPersister {
         builder.setRequiresDeviceIdle((Boolean) map.get(REQUIRE_DEVICE_IDLE));
         builder.setRequiredNetworkType((Integer) map.get(NETWORK_TYPE));
 
-        int minLatenceyMillis = (Integer) map.get(MIN_LATENCY_MILLIS);
+        long minLatenceyMillis = (Long) map.get(MIN_LATENCY_MILLIS);
         if (minLatenceyMillis != 0) {
             builder.setMinimumLatency(minLatenceyMillis);
         }
 
-        int maxExecutionDelayMillis = (Integer) map.get(MAX_EXECUTION_DELAY_MILLIS);
+        long maxExecutionDelayMillis = (Long) map.get(MAX_EXECUTION_DELAY_MILLIS);
         if (maxExecutionDelayMillis != 0) {
             builder.setOverrideDeadline(maxExecutionDelayMillis);
         }
