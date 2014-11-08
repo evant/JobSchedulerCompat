@@ -3,26 +3,16 @@ package me.tatarka.support.job;
 import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.PendingIntent;
-import android.app.Service;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.BatteryManager;
-import android.os.Build;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Looper;
-import android.os.Message;
-import android.os.RemoteException;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.support.v4.content.WakefulBroadcastReceiver;
 import android.support.v4.net.ConnectivityManagerCompat;
-import android.util.Log;
-import android.util.SparseArray;
 
 import java.util.List;
 
@@ -45,8 +35,11 @@ public class JobServiceCompat extends IntentService {
     private static final int MSG_CANCEL_ALL = 3;
     private static final int MSG_REQUIRED_STATE_CHANGED = 4;
     private static final int MSG_CHECK_JOB_READY = 5;
+    private static final int MSG_JOBS_FINISHED = 6;
 
     private AlarmManager am;
+    private PowerManager pm;
+    private static PowerManager.WakeLock WAKE_LOCK;
 
     public JobServiceCompat() {
         super("JobServiceCompat");
@@ -56,6 +49,11 @@ public class JobServiceCompat extends IntentService {
     public void onCreate() {
         super.onCreate();
         am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+
+        if (WAKE_LOCK == null) {
+            WAKE_LOCK = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "JobServiceCompat");
+        }
     }
 
     @Override
@@ -93,6 +91,9 @@ public class JobServiceCompat extends IntentService {
                 boolean runImmediately = intent.getBooleanExtra(EXTRA_RUN_IMMEDIATELY, false);
                 handleCheckJobReady(job, startTime, numFailures, runImmediately);
                 break;
+            }
+            case MSG_JOBS_FINISHED: {
+                handleJobsFinished();
             }
         }
     }
@@ -169,6 +170,7 @@ public class JobServiceCompat extends IntentService {
 
         if (runImmediately || (hasRequiredNetwork && hasRequiredPowerState)) {
             unscheduleJob(job.getId());
+            WAKE_LOCK.acquire();
             JobSchedulerService.startJob(this, job, numFailures, runImmediately);
         } else {
             if (job.hasLateConstraint()) {
@@ -177,6 +179,12 @@ public class JobServiceCompat extends IntentService {
                 // Ensure we have a pending intent for when required state changes.
                 toPendingIntent(job, startTime, numFailures, false);
             }
+        }
+    }
+
+    private void handleJobsFinished() {
+        if (WAKE_LOCK.isHeld()) {
+            WAKE_LOCK.release();
         }
     }
 
@@ -212,6 +220,8 @@ public class JobServiceCompat extends IntentService {
         boolean isCharging = isCurrentlyCharging();
 
         List<JobInfo> pendingJobs = JobPersister.getInstance(this).getPendingJobs();
+        boolean firedServiceIntent = false;
+
         for (JobInfo job : pendingJobs) {
             boolean hasRequiredNetwork = JobInfoUtil.hasRequiredNetwork(job, networkType);
             boolean hasRequiredPowerState = JobInfoUtil.hasRequiredPowerState(job, isCharging);
@@ -221,6 +231,7 @@ public class JobServiceCompat extends IntentService {
                 if (pendingIntent != null) {
                     try {
                         pendingIntent.send();
+                        firedServiceIntent = true;
                     } catch (PendingIntent.CanceledException e) {
                         // Ignore, has already been canceled.
                     }
@@ -229,8 +240,9 @@ public class JobServiceCompat extends IntentService {
         }
 
         JobSchedulerService.recheckConstraints(this, getCurrentNetworkType(), isCurrentlyCharging());
-
-        // TODO: acquire own wake lock for these intents that were just sent.
+        if (firedServiceIntent) {
+            WAKE_LOCK.acquire();
+        }
         WakefulBroadcastReceiver.completeWakefulIntent(intent);
     }
 
@@ -277,6 +289,12 @@ public class JobServiceCompat extends IntentService {
         context.startService(
                 new Intent(context, JobServiceCompat.class)
                         .putExtra(EXTRA_MSG, MSG_CANCEL_ALL));
+    }
+
+    static void jobsFinished(Context context) {
+        context.startService(
+                new Intent(context, JobServiceCompat.class)
+                        .putExtra(EXTRA_MSG, MSG_JOBS_FINISHED));
     }
 
     static Intent requiredStateChangedIntent(Context context) {

@@ -14,10 +14,9 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
 
-import java.util.ArrayList;
-import java.util.List;
-
-/** @hide */
+/**
+ * @hide
+ */
 public class JobSchedulerService extends Service {
     static final String TAG = "JobServiceSchedulerService";
 
@@ -73,7 +72,7 @@ public class JobSchedulerService extends Service {
 
     private void handleStopAll() {
         int size = runningJobs.size();
-        for(int i = 0; i < size; i++) {
+        for (int i = 0; i < size; i++) {
             int jobId = runningJobs.keyAt(i);
             JobServiceConnection connection = runningJobs.get(jobId);
             connection.stop(false);
@@ -83,7 +82,7 @@ public class JobSchedulerService extends Service {
 
     private void handleRecheckConstraints(int networkType, boolean powerConnected) {
         int size = runningJobs.size();
-        for(int i = 0; i < size; i++) {
+        for (int i = 0; i < size; i++) {
             int jobId = runningJobs.keyAt(i);
             JobServiceConnection connection = runningJobs.get(jobId);
             if (!jobMeetsConstraints(connection.job, networkType, powerConnected)) {
@@ -205,6 +204,7 @@ public class JobSchedulerService extends Service {
 
     private void stopIfFinished() {
         if (runningJobs.size() == 0) {
+            JobServiceCompat.jobsFinished(this);
             stopSelf();
         }
     }
