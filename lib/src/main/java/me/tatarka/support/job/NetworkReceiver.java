@@ -5,10 +5,9 @@ import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.support.v4.content.WakefulBroadcastReceiver;
-import android.support.v4.net.ConnectivityManagerCompat;
 
 /**
- * @hide *
+ * @hide
  */
 public class NetworkReceiver extends WakefulBroadcastReceiver {
     @Override
@@ -16,7 +15,6 @@ public class NetworkReceiver extends WakefulBroadcastReceiver {
         ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netInfo = cm.getActiveNetworkInfo();
         if (netInfo != null && netInfo.isConnectedOrConnecting()) {
-            ReceiverUtils.disable(context, getClass());
             startWakefulService(context, JobServiceCompat.requiredStateChangedIntent(context));
         }
     }

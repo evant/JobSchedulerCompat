@@ -31,9 +31,7 @@ class JobSchedulerCompat extends JobScheduler {
 
     @Override
     public synchronized void cancelAll() {
-        for (JobInfo job : jobPersister.getPendingJobs()) {
-            JobServiceCompat.cancel(context, job.getId());
-        }
+        JobServiceCompat.cancelAll(context);
     }
 
     @Override

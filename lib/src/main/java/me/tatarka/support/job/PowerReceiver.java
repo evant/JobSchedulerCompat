@@ -10,7 +10,6 @@ import android.support.v4.content.WakefulBroadcastReceiver;
 public class PowerReceiver extends WakefulBroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
-        ReceiverUtils.disable(context, PowerReceiver.class);
         startWakefulService(context, JobServiceCompat.requiredStateChangedIntent(context));
     }
 }

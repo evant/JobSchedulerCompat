@@ -14,6 +14,9 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** @hide */
 public class JobSchedulerService extends Service {
     static final String TAG = "JobServiceSchedulerService";
@@ -21,11 +24,15 @@ public class JobSchedulerService extends Service {
     private static final String EXTRA_MSG = "EXTRA_MSG";
     private static final String EXTRA_JOB = "EXTRA_JOB";
     private static final String EXTRA_JOB_ID = "EXTRA_JOB_ID";
-    private static final String EXTRA_START_TIME = "EXTRA_START_TIME";
     private static final String EXTRA_NUM_FAILURES = "EXTRA_NUM_FAILURES";
+    private static final String EXTRA_RUN_IMMEDIATELY = "EXTRA_RUN_IMMEDIATELY";
+    private static final String EXTRA_NETWORK_TYPE = "EXTRA_NETWORK_TYPE";
+    private static final String EXTRA_IS_CHARGING = "EXTRA_IS_CHARGING";
 
     private static final int MSG_START_JOB = 0;
     private static final int MSG_STOP_JOB = 1;
+    private static final int MSG_STOP_ALL = 2;
+    private static final int MSG_RECHECK_CONSTRAINTS = 3;
 
     private SparseArray<JobServiceConnection> runningJobs = new SparseArray<JobServiceConnection>();
 
@@ -42,7 +49,7 @@ public class JobSchedulerService extends Service {
         return null;
     }
 
-    private void handleStartJob(JobInfo job, long startTime, int numFailures) {
+    private void handleStartJob(JobInfo job, int numFailures, boolean runImmediately) {
         Intent intent = new Intent();
         intent.setComponent(job.getService());
 
@@ -51,7 +58,7 @@ public class JobSchedulerService extends Service {
             flags |= BIND_WAIVE_PRIORITY;
         }
 
-        JobServiceConnection connection = new JobServiceConnection(job, numFailures);
+        JobServiceConnection connection = new JobServiceConnection(job, numFailures, runImmediately);
         runningJobs.put(job.getId(), connection);
         bindService(intent, connection, flags);
     }
@@ -60,23 +67,49 @@ public class JobSchedulerService extends Service {
         JobServiceConnection connection = runningJobs.get(jobId);
         if (connection != null) {
             runningJobs.remove(jobId);
-            connection.stop();
+            connection.stop(false);
         }
+    }
+
+    private void handleStopAll() {
+        int size = runningJobs.size();
+        for(int i = 0; i < size; i++) {
+            int jobId = runningJobs.keyAt(i);
+            JobServiceConnection connection = runningJobs.get(jobId);
+            connection.stop(false);
+        }
+        runningJobs.clear();
+    }
+
+    private void handleRecheckConstraints(int networkType, boolean powerConnected) {
+        int size = runningJobs.size();
+        for(int i = 0; i < size; i++) {
+            int jobId = runningJobs.keyAt(i);
+            JobServiceConnection connection = runningJobs.get(jobId);
+            if (!jobMeetsConstraints(connection.job, networkType, powerConnected)) {
+                connection.stop(true);
+            }
+        }
+    }
+
+    private boolean jobMeetsConstraints(JobInfo job, int networkType, boolean isCharging) {
+        return JobInfoUtil.hasRequiredNetwork(job, networkType) && JobInfoUtil.hasRequiredPowerState(job, isCharging);
     }
 
     private class JobServiceConnection implements ServiceConnection {
         JobInfo job;
         JobParameters jobParams;
         IJobService jobService;
+        boolean allowReschedule = true;
 
-        JobServiceConnection(final JobInfo job, final int numFailures) {
+        JobServiceConnection(final JobInfo job, final int numFailures, final boolean runImmediately) {
             this.job = job;
             this.jobParams = new JobParameters(new IJobCallback.Stub() {
                 @Override
                 public void jobFinished(int jobId, boolean needsReschedule) throws RemoteException {
                     finishJob(jobId, JobServiceConnection.this);
 
-                    if (needsReschedule) {
+                    if (needsReschedule && allowReschedule) {
                         JobServiceCompat.reschedule(JobSchedulerService.this, job, numFailures + 1);
                     } else {
                         stopIfFinished();
@@ -95,13 +128,13 @@ public class JobSchedulerService extends Service {
                 public void acknowledgeStopMessage(int jobId, boolean reschedule) throws RemoteException {
                     finishJob(jobId, JobServiceConnection.this);
 
-                    if (reschedule) {
+                    if (reschedule && allowReschedule) {
                         JobServiceCompat.reschedule(JobSchedulerService.this, job, numFailures + 1);
                     } else {
                         stopIfFinished();
                     }
                 }
-            }, job.getId(), job.getExtras(), false);
+            }, job.getId(), job.getExtras(), runImmediately);
         }
 
         @Override
@@ -124,8 +157,9 @@ public class JobSchedulerService extends Service {
             stopIfFinished();
         }
 
-        void stop() {
+        void stop(boolean allowReschedule) {
             if (jobService != null) {
+                this.allowReschedule = allowReschedule;
                 try {
                     jobService.stopJob(jobParams);
                 } catch (Exception e) {
@@ -136,11 +170,11 @@ public class JobSchedulerService extends Service {
         }
     }
 
-    static void startJob(Context context, JobInfo job, long startTime, int numFailures) {
+    static void startJob(Context context, JobInfo job, int numFailures, boolean runImmediately) {
         context.startService(new Intent(context, JobSchedulerService.class)
                 .putExtra(EXTRA_MSG, MSG_START_JOB)
                 .putExtra(EXTRA_JOB, job)
-                .putExtra(EXTRA_START_TIME, startTime)
+                .putExtra(EXTRA_RUN_IMMEDIATELY, runImmediately)
                 .putExtra(EXTRA_NUM_FAILURES, numFailures));
     }
 
@@ -148,6 +182,18 @@ public class JobSchedulerService extends Service {
         context.startService(new Intent(context, JobSchedulerService.class)
                 .putExtra(EXTRA_MSG, MSG_STOP_JOB)
                 .putExtra(EXTRA_JOB_ID, jobId));
+    }
+
+    static void stopAll(Context context) {
+        context.startService(new Intent(context, JobSchedulerService.class)
+                .putExtra(EXTRA_MSG, MSG_STOP_ALL));
+    }
+
+    static void recheckConstraints(Context context, int networkType, boolean isCharging) {
+        context.startService(new Intent(context, JobSchedulerService.class)
+                .putExtra(EXTRA_MSG, MSG_RECHECK_CONSTRAINTS)
+                .putExtra(EXTRA_NETWORK_TYPE, networkType)
+                .putExtra(EXTRA_IS_CHARGING, isCharging));
     }
 
     private void finishJob(int jobId, JobServiceConnection connection) {
@@ -170,13 +216,21 @@ public class JobSchedulerService extends Service {
             switch (msg.what) {
                 case MSG_START_JOB:
                     JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
-                    long startTime = intent.getLongExtra(EXTRA_START_TIME, 0);
                     int numFailures = intent.getIntExtra(EXTRA_NUM_FAILURES, 0);
-                    handleStartJob(job, startTime, numFailures);
+                    boolean runImmediately = intent.getBooleanExtra(EXTRA_RUN_IMMEDIATELY, false);
+                    handleStartJob(job, numFailures, runImmediately);
                     break;
                 case MSG_STOP_JOB:
                     int jobId = intent.getIntExtra(EXTRA_JOB_ID, 0);
                     handleStopJob(jobId);
+                    break;
+                case MSG_STOP_ALL:
+                    handleStopAll();
+                    break;
+                case MSG_RECHECK_CONSTRAINTS:
+                    int networkType = intent.getIntExtra(EXTRA_NETWORK_TYPE, JobInfo.NETWORK_TYPE_NONE);
+                    boolean powerConnected = intent.getBooleanExtra(EXTRA_IS_CHARGING, false);
+                    handleRecheckConstraints(networkType, powerConnected);
                     break;
             }
         }
