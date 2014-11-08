@@ -38,4 +38,6 @@ limitations under the License.
     <string name="backoff">Backoff:</string>
     <string name="linear">Linear</string>
     <string name="exponential">Exponential</string>
+    <string name="persisted_caption">Persisted</string>
+    <string name="persistent_text">Persist across boots.</string>
 </resources>

@@ -60,6 +60,7 @@ public class MainActivity extends ActionBarActivity {
         mAnyConnectivityRadioButton = (RadioButton) findViewById(R.id.checkbox_any);
         mRequiresChargingCheckBox = (CheckBox) findViewById(R.id.checkbox_charging);
         mRequiresIdleCheckbox = (CheckBox) findViewById(R.id.checkbox_idle);
+        mPersistedCheckbox = (CheckBox) findViewById(R.id.checkbox_persisted);
         mBackoffDelayEditText = (EditText) findViewById(R.id.backoff_delay_time);
         mBackoffLinearRadioButton = (RadioButton) findViewById(R.id.checkbox_linear);
         mBackoffExponentialRadioButton = (RadioButton) findViewById(R.id.checkbox_exponential);
@@ -86,6 +87,7 @@ public class MainActivity extends ActionBarActivity {
     private RadioButton mAnyConnectivityRadioButton;
     private CheckBox mRequiresChargingCheckBox;
     private CheckBox mRequiresIdleCheckbox;
+    private CheckBox mPersistedCheckbox;
     private RadioButton mBackoffLinearRadioButton;
     private RadioButton mBackoffExponentialRadioButton;
 
@@ -151,6 +153,7 @@ public class MainActivity extends ActionBarActivity {
         }
         builder.setRequiresDeviceIdle(mRequiresIdleCheckbox.isChecked());
         builder.setRequiresCharging(mRequiresChargingCheckBox.isChecked());
+        builder.setPersisted(mPersistedCheckbox.isChecked());
 
         String backoffTime = mBackoffDelayEditText.getText().toString();
         if (backoffTime != null && !TextUtils.isEmpty(backoffTime)) {

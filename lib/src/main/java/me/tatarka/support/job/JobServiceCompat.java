@@ -36,6 +36,7 @@ public class JobServiceCompat extends IntentService {
     private static final int MSG_REQUIRED_STATE_CHANGED = 4;
     private static final int MSG_CHECK_JOB_READY = 5;
     private static final int MSG_JOBS_FINISHED = 6;
+    private static final int MSG_BOOT = 7;
 
     private AlarmManager am;
     private PowerManager pm;
@@ -92,6 +93,9 @@ public class JobServiceCompat extends IntentService {
                 handleCheckJobReady(job, startTime, numFailures, runImmediately);
                 break;
             }
+            case MSG_BOOT: {
+                handleBoot();
+            }
             case MSG_JOBS_FINISHED: {
                 handleJobsFinished();
             }
@@ -101,7 +105,10 @@ public class JobServiceCompat extends IntentService {
     private void handleSchedule(JobInfo job) {
         unscheduleJob(job.getId());
         JobPersister.getInstance(this).addPendingJob(job);
+        scheduleJob(job);
+    }
 
+    private void scheduleJob(JobInfo job) {
         long startTime = SystemClock.elapsedRealtime();
 
         if (job.hasEarlyConstraint()) {
@@ -119,6 +126,10 @@ public class JobServiceCompat extends IntentService {
 
         if (job.isRequireCharging()) {
             ReceiverUtils.enable(this, PowerReceiver.class);
+        }
+
+        if (job.isPersisted()) {
+            ReceiverUtils.enable(this, BootReceiver.class);
         }
     }
 
@@ -182,7 +193,53 @@ public class JobServiceCompat extends IntentService {
         }
     }
 
+    private void handleBoot() {
+        List<JobInfo> jobs = JobPersister.getInstance(this).getPendingJobs();
+        for (JobInfo job : jobs) {
+            if (job.isPersisted()) {
+                scheduleJob(job);
+            }
+        }
+    }
+
     private void handleJobsFinished() {
+        // Check if we can turn off any broadcast receivers.
+        List<JobInfo> jobs = JobPersister.getInstance(this).getPendingJobs();
+        boolean hasNetworkConstraint = false;
+        boolean hasPowerConstraint = false;
+        boolean hasBootConstraint = false;
+
+        for (JobInfo job : jobs) {
+            if (job.getNetworkType() != JobInfo.NETWORK_TYPE_NONE) {
+                hasNetworkConstraint = true;
+            }
+
+            if (job.isRequireCharging()) {
+                hasPowerConstraint = true;
+            }
+
+            if (job.isPersisted()) {
+                hasBootConstraint = true;
+            }
+
+            if (hasNetworkConstraint && hasPowerConstraint && hasBootConstraint) {
+                break;
+            }
+        }
+
+        if (!hasNetworkConstraint) {
+            ReceiverUtils.disable(this, NetworkReceiver.class);
+        }
+
+        if (!hasPowerConstraint) {
+            ReceiverUtils.disable(this, PowerReceiver.class);
+        }
+
+        if (!hasBootConstraint) {
+            ReceiverUtils.disable(this, BootReceiver.class);
+        }
+
+        // Alright we're done, you can go to sleep now.
         if (WAKE_LOCK.isHeld()) {
             WAKE_LOCK.release();
         }
@@ -300,5 +357,10 @@ public class JobServiceCompat extends IntentService {
     static Intent requiredStateChangedIntent(Context context) {
         return new Intent(context, JobServiceCompat.class)
                 .putExtra(EXTRA_MSG, MSG_REQUIRED_STATE_CHANGED);
+    }
+
+    public static Intent bootIntent(Context context) {
+        return new Intent(context, JobServiceCompat.class)
+                .putExtra(EXTRA_MSG, MSG_BOOT);
     }
 }

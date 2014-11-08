@@ -499,7 +499,7 @@ public class JobInfo implements Parcelable {
                 return;
             }
 
-            if (job.isRequireDeviceIdle() || job.isPersisted() || job.isPeriodic()) {
+            if (job.isRequireDeviceIdle() || job.isPeriodic()) {
                 throw new IllegalArgumentException("Not yet implemented!");
             }
         }
