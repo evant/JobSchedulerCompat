@@ -27,11 +27,14 @@ import android.support.v7.app.ActionBarActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.widget.*;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.List;
 
-import me.tatarka.support.internal.IoThread;
 import me.tatarka.support.job.JobInfo;
 import me.tatarka.support.job.JobParameters;
 import me.tatarka.support.job.JobScheduler;
@@ -217,7 +220,7 @@ public class MainActivity extends ActionBarActivity {
 
         JobScheduler jobScheduler = JobScheduler.getInstance(this);
         List<JobInfo> pendingJobs = jobScheduler.getAllPendingJobs();
-        for (JobInfo job: pendingJobs) {
+        for (JobInfo job : pendingJobs) {
             Log.d(TAG, "pending job: " + job);
         }
     }

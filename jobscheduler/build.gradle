@@ -1,4 +1,6 @@
 apply plugin: 'com.android.library'
+apply plugin: 'android-maven'
+apply from : "$project.rootDir/publishing.gradle"
 
 android {
     compileSdkVersion 21

@@ -20,6 +20,7 @@ android {
 }
 
 dependencies {
-    compile project(':lib')
+//    compile project(':jobscheduler')
+    compile 'me.tatarka.support:jobscheduler:0.1.0-SNAPSHOT'
     compile 'com.android.support:appcompat-v7:21.0.0'
 }
