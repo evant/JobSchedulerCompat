@@ -24,6 +24,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.v4.util.AtomicFile;
+import android.util.Log;
 import android.util.Pair;
 import android.util.Xml;
 
@@ -82,7 +83,7 @@ public class JobStore {
     public static JobStore initAndGet(Context context) {
         synchronized (sSingletonLock) {
             if (sSingleton == null) {
-                sSingleton = new JobStore(context, Environment.getDataDirectory());
+                sSingleton = new JobStore(context, context.getFilesDir());
             }
             return sSingleton;
         }
@@ -275,9 +276,9 @@ public class JobStore {
                 mJobsFile.finishWrite(fos);
                 mDirtyOperations = 0;
             } catch (IOException e) {
-                // Ignore
+                Log.e(TAG, e.getMessage(), e);
             } catch (XmlPullParserException e) {
-                // Ignore
+                Log.e(TAG, e.getMessage(), e);
             }
         }
 

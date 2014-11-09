@@ -1,9 +1,10 @@
 package me.tatarka.support.job;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import me.tatarka.support.internal.util.ArraySet;
@@ -23,9 +24,11 @@ class JobSchedulerCompat extends JobScheduler {
     }
 
     private Context context;
+    private PackageManager pm;
 
     private JobSchedulerCompat(Context context) {
         this.context = context.getApplicationContext();
+        pm = context.getPackageManager();
     }
 
     @Override
@@ -53,7 +56,27 @@ class JobSchedulerCompat extends JobScheduler {
 
     @Override
     public synchronized int schedule(JobInfo jobInfo) {
+        checkPermissions(jobInfo);
         JobServiceCompat.schedule(context, jobInfo);
         return JobScheduler.RESULT_SUCCESS;
+    }
+
+    private void checkPermissions(JobInfo job) {
+        String packageName = context.getPackageName();
+        if (pm.checkPermission(Manifest.permission.WAKE_LOCK, packageName) != PackageManager.PERMISSION_GRANTED) {
+            throw new IllegalStateException("Error: WAKE_LOCK is required on api < 21.");
+        }
+
+        if (job.getNetworkType() != JobInfo.NETWORK_TYPE_NONE) {
+            if (pm.checkPermission(Manifest.permission.ACCESS_NETWORK_STATE, packageName) != PackageManager.PERMISSION_GRANTED) {
+                throw new IllegalStateException("Error: requested a job network constraint without holding ACCESS_NETWORK_STATE permission on api < 21.");
+            }
+        }
+
+        if (job.isPersisted()) {
+            if (pm.checkPermission(Manifest.permission.RECEIVE_BOOT_COMPLETED, packageName) != PackageManager.PERMISSION_GRANTED) {
+                throw new IllegalStateException("Error: requested job to be persisted without holding RECEIVE_BOOT_COMPLETE permission.");
+            }
+        }
     }
 }

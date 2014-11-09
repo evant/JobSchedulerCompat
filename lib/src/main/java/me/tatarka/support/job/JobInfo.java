@@ -487,12 +487,7 @@ public class JobInfo implements Parcelable {
                         " setRequiresDeviceIdle is an error.");
             }
 
-            checkPermissions(this);
             return new JobInfo(this);
-        }
-
-        private void checkPermissions(Builder builder) {
-            // TODO: ensure the app has the correct permissions to use the given constraints.
         }
     }
 
