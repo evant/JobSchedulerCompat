@@ -25,7 +25,7 @@ import me.tatarka.support.internal.receivers.TimeReceiver;
 /**
  * @hide
  */
-public class JobSchedulerService extends Service implements StateChangedListener {
+public class JobSchedulerService extends Service {
     static final String TAG = "JobServiceSchedulerService";
 
     private static final String EXTRA_MSG = "EXTRA_MSG";
@@ -106,16 +106,6 @@ public class JobSchedulerService extends Service implements StateChangedListener
                 connection.stop(true);
             }
         }
-    }
-
-    @Override
-    public void onControllerStateChanged() {
-
-    }
-
-    @Override
-    public void onRunJobNow(JobStatus jobStatus) {
-
     }
 
     private class JobServiceConnection implements ServiceConnection {
