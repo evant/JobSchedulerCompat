@@ -487,23 +487,13 @@ public class JobInfo implements Parcelable {
                         " setRequiresDeviceIdle is an error.");
             }
 
-            JobInfo jobInfo = new JobInfo(this);
-            checkSupported(jobInfo);
-            return jobInfo;
+            checkPermissions(this);
+            return new JobInfo(this);
         }
 
-
-        // Adjust this check as job features get implemented
-        private void checkSupported(JobInfo job) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                return;
-            }
-
-            if (job.isPeriodic()) {
-                throw new IllegalArgumentException("Not yet implemented!");
-            }
+        private void checkPermissions(Builder builder) {
+            // TODO: ensure the app has the correct permissions to use the given constraints.
         }
-
     }
 
 }

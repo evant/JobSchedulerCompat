@@ -11,13 +11,16 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
+import android.os.SystemClock;
 import android.util.Log;
 import android.util.SparseArray;
 
 import me.tatarka.support.job.IJobCallback;
 import me.tatarka.support.job.IJobService;
+import me.tatarka.support.job.JobInfo;
 import me.tatarka.support.job.JobParameters;
 import me.tatarka.support.server.job.controllers.JobStatus;
+import me.tatarka.support.server.job.controllers.TimeReceiver;
 
 /**
  * @hide
@@ -58,6 +61,11 @@ public class JobSchedulerService extends Service implements StateChangedListener
         JobStatus job;
         synchronized (jobStore) {
             job = jobStore.getJobByJobId(jobId);
+        }
+
+        if (job == null) {
+            // Attempting to start a non-existent job, it may have already been canceled.
+            return;
         }
 
         Intent intent = new Intent();
@@ -123,11 +131,12 @@ public class JobSchedulerService extends Service implements StateChangedListener
                 public void jobFinished(int jobId, boolean needsReschedule) throws RemoteException {
                     finishJob(jobId, JobServiceConnection.this);
 
-                    if (needsReschedule && allowReschedule) {
-                        JobServiceCompat.reschedule(JobSchedulerService.this, job.getJobId());
-                    } else {
-                        stopIfFinished();
+                    if (allowReschedule) {
+                        if (needsReschedule || job.getJob().isPeriodic()) {
+                            rescheduleJob(job, needsReschedule);
+                        }
                     }
+                    stopIfFinished();
                 }
 
                 @Override
@@ -142,11 +151,12 @@ public class JobSchedulerService extends Service implements StateChangedListener
                 public void acknowledgeStopMessage(int jobId, boolean reschedule) throws RemoteException {
                     finishJob(jobId, JobServiceConnection.this);
 
-                    if (reschedule && allowReschedule) {
-                        JobServiceCompat.reschedule(JobSchedulerService.this, job.getJobId());
-                    } else {
-                        stopIfFinished();
+                    if (allowReschedule) {
+                        if (reschedule || job.getJob().isPeriodic()) {
+                            rescheduleJob(job, reschedule);
+                        }
                     }
+                    stopIfFinished();
                 }
             }, job.getJobId(), job.getExtras(), !job.isConstraintsSatisfied());
         }
@@ -215,6 +225,73 @@ public class JobSchedulerService extends Service implements StateChangedListener
         synchronized (jobStore) {
             jobStore.remove(connection.job);
         }
+    }
+
+    private void rescheduleJob(JobStatus job, boolean wasFailure) {
+        JobStatus newJob;
+        if (wasFailure) {
+            newJob = rescheduleFailedJob(job);
+        } else {
+            newJob = reschedulePeriodicJob(job);
+        }
+
+        JobStore jobStore = JobStore.initAndGet(this);
+        synchronized (jobStore) {
+            jobStore.remove(job);
+            jobStore.add(newJob);
+        }
+
+        TimeReceiver.setAlarmsForJob(this, newJob);
+    }
+
+    /**
+     * A job is rescheduled with exponential back-off if the client requests this from their
+     * execution logic.
+     * A caveat is for idle-mode jobs, for which the idle-mode constraint will usurp the
+     * timeliness of the reschedule. For an idle-mode job, no deadline is given.
+     * @return A newly instantiated JobStatus with the same constraints as the last job except
+     * with adjusted timing constraints.
+     */
+    private JobStatus rescheduleFailedJob(JobStatus job) {
+        final long elapsedNowMillis = SystemClock.elapsedRealtime();
+        final JobInfo jobInfo = job.getJob();
+
+        final long initialBackoffMillis = jobInfo.getInitialBackoffMillis();
+        final int backoffAttemps = job.getNumFailures() + 1;
+
+        long delayMillis;
+        switch (job.getJob().getBackoffPolicy()) {
+            case JobInfo.BACKOFF_POLICY_LINEAR:
+                delayMillis = initialBackoffMillis * backoffAttemps;
+                break;
+            default:
+            case JobInfo.BACKOFF_POLICY_EXPONENTIAL:
+                delayMillis = (long) Math.scalb(initialBackoffMillis, backoffAttemps - 1);
+                break;
+        }
+        delayMillis = Math.min(delayMillis, JobInfo.MAX_BACKOFF_DELAY_MILLIS);
+        return new JobStatus(job, elapsedNowMillis + delayMillis, JobStatus.NO_LATEST_RUNTIME, backoffAttemps);
+    }
+
+    /**
+     * Called after a periodic has executed so we can to re-add it. We take the last execution time
+     * of the job to be the time of completion (i.e. the time at which this function is called).
+     * This could be inaccurate b/c the job can run for as long as
+     * {@link com.android.server.job.JobServiceContext#EXECUTING_TIMESLICE_MILLIS}, but will lead
+     * to underscheduling at least, rather than if we had taken the last execution time to be the
+     * start of the execution.
+     * @return A new job representing the execution criteria for this instantiation of the
+     * recurring job.
+     */
+    private JobStatus reschedulePeriodicJob(JobStatus job) {
+        final long elapsedNow = SystemClock.elapsedRealtime();
+        // Compute how much of the period is remaining.
+        long runEarly = Math.max(job.getLatestRunTimeElapsed() - elapsedNow, 0);
+        long newEarliestRunTimeElapsed = elapsedNow + runEarly;
+        long period = job.getJob().getIntervalMillis();
+        long newLatestRuntimeElapsed = newEarliestRunTimeElapsed + period;
+        return new JobStatus(job, newEarliestRunTimeElapsed,
+                newLatestRuntimeElapsed, 0 /* backoffAttempt */);
     }
 
     private void stopIfFinished() {

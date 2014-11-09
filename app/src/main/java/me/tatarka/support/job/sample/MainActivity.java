@@ -59,6 +59,7 @@ public class MainActivity extends ActionBarActivity {
         mParamsTextView = (TextView) findViewById(R.id.task_params);
         mDelayEditText = (EditText) findViewById(R.id.delay_time);
         mDeadlineEditText = (EditText) findViewById(R.id.deadline_time);
+        mPeriodEditText = (EditText) findViewById(R.id.period_time);
         mNoConnectivityRadioButton = (RadioButton) findViewById(R.id.checkbox_none);
         mWiFiConnectivityRadioButton = (RadioButton) findViewById(R.id.checkbox_unmetered);
         mAnyConnectivityRadioButton = (RadioButton) findViewById(R.id.checkbox_any);
@@ -85,6 +86,7 @@ public class MainActivity extends ActionBarActivity {
     private TextView mParamsTextView;
     private EditText mDelayEditText;
     private EditText mDeadlineEditText;
+    private EditText mPeriodEditText;
     private EditText mBackoffDelayEditText;
     private RadioButton mNoConnectivityRadioButton;
     private RadioButton mWiFiConnectivityRadioButton;
@@ -148,6 +150,10 @@ public class MainActivity extends ActionBarActivity {
         if (deadline != null && !TextUtils.isEmpty(deadline)) {
             builder.setOverrideDeadline(Long.valueOf(deadline) * 1000);
         }
+        String period = mPeriodEditText.getText().toString();
+        if (period != null && !TextUtils.isEmpty(period)) {
+            builder.setPeriodic(Long.valueOf(period) * 1000);
+        }
         boolean requiresUnmetered = mWiFiConnectivityRadioButton.isChecked();
         boolean requiresAnyConnectivity = mAnyConnectivityRadioButton.isChecked();
         if (requiresUnmetered) {
@@ -169,8 +175,9 @@ public class MainActivity extends ActionBarActivity {
             mTestService.scheduleJob(builder.build());
         } catch (IllegalArgumentException e) {
             Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
+        } catch (IllegalStateException e) {
+            Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
         }
-
     }
 
     public void cancelAllJobs(View v) {

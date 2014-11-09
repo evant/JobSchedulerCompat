@@ -40,4 +40,6 @@ limitations under the License.
     <string name="exponential">Exponential</string>
     <string name="persisted_caption">Persisted</string>
     <string name="persistent_text">Persist across boots.</string>
+    <string name="periodic">Periodic</string>
+    <string name="period">Period</string>
 </resources>

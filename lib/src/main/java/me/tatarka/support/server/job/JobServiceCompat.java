@@ -4,7 +4,6 @@ import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
 import android.os.PowerManager;
-import android.os.SystemClock;
 import android.support.v4.content.WakefulBroadcastReceiver;
 
 import java.util.ArrayList;
@@ -32,12 +31,11 @@ public class JobServiceCompat extends IntentService {
     private static final String EXTRA_RELEASE_WAKE_LOCK = "EXTRA_RELEASE_WAKE_LOCK";
 
     private static final int MSG_SCHEDULE_JOB = 0;
-    private static final int MSG_RESCHEDULE_JOB = 1;
-    private static final int MSG_CANCEL_JOB = 2;
-    private static final int MSG_CANCEL_ALL = 3;
-    private static final int MSG_RUN_JOBS = 4;
-    private static final int MSG_JOBS_FINISHED = 6;
-    private static final int MSG_BOOT = 7;
+    private static final int MSG_CANCEL_JOB = 1;
+    private static final int MSG_CANCEL_ALL = 2;
+    private static final int MSG_RUN_JOBS = 3;
+    private static final int MSG_JOBS_FINISHED = 4;
+    private static final int MSG_BOOT = 5;
 
     private static PowerManager.WakeLock WAKE_LOCK;
 
@@ -62,11 +60,6 @@ public class JobServiceCompat extends IntentService {
             case MSG_SCHEDULE_JOB: {
                 JobInfo job = intent.getParcelableExtra(EXTRA_JOB);
                 handleSchedule(job);
-                break;
-            }
-            case MSG_RESCHEDULE_JOB: {
-                int jobId = intent.getIntExtra(EXTRA_JOB_ID, 0);
-                handelReschedule(jobId);
                 break;
             }
             case MSG_CANCEL_JOB: {
@@ -124,45 +117,6 @@ public class JobServiceCompat extends IntentService {
         if (job.isPersisted()) {
             ReceiverUtils.enable(this, BootReceiver.class);
         }
-    }
-
-    private void handelReschedule(int jobId) {
-        JobStore jobStore = JobStore.initAndGet(this);
-        synchronized (jobStore) {
-            JobStatus jobStatus = jobStore.getJobByJobId(jobId);
-            jobStore.remove(jobStatus);
-            JobStatus newJobStats = rescheduleJob(jobStatus);
-            jobStore.add(newJobStats);
-        }
-    }
-
-    private JobStatus rescheduleJob(JobStatus job) {
-        if (job.hasIdleConstraint()) {
-            // Can just re-add the current job, it will be executed in the next idle window.
-            return job;
-        }
-
-        final long elapsedNowMillis = SystemClock.elapsedRealtime();
-        final JobInfo jobInfo = job.getJob();
-
-        final long initialBackoffMillis = jobInfo.getInitialBackoffMillis();
-        final int backoffAttemps = job.getNumFailures() + 1;
-
-        long delayMillis;
-        switch (job.getJob().getBackoffPolicy()) {
-            case JobInfo.BACKOFF_POLICY_LINEAR:
-                delayMillis = initialBackoffMillis * backoffAttemps;
-                break;
-            default:
-            case JobInfo.BACKOFF_POLICY_EXPONENTIAL:
-                delayMillis = (long) Math.scalb(initialBackoffMillis, backoffAttemps - 1);
-                break;
-        }
-        delayMillis = Math.min(delayMillis, JobInfo.MAX_BACKOFF_DELAY_MILLIS);
-        JobStatus newJob = new JobStatus(job, elapsedNowMillis + delayMillis, JobStatus.NO_LATEST_RUNTIME, backoffAttemps);
-
-        TimeReceiver.setAlarmsForJob(this, newJob);
-        return newJob;
     }
 
     private void handleCancelJob(int jobId) {
@@ -281,13 +235,6 @@ public class JobServiceCompat extends IntentService {
                 new Intent(context, JobServiceCompat.class)
                         .putExtra(EXTRA_MSG, MSG_SCHEDULE_JOB)
                         .putExtra(EXTRA_JOB, job));
-    }
-
-    static void reschedule(Context context, int jobId) {
-        context.startService(
-                new Intent(context, JobServiceCompat.class)
-                        .putExtra(EXTRA_MSG, MSG_RESCHEDULE_JOB)
-                        .putExtra(EXTRA_JOB_ID, jobId));
     }
 
     public static void cancel(Context context, int jobId) {
