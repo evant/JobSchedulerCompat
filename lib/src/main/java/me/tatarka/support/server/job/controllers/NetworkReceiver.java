@@ -37,7 +37,18 @@ public class NetworkReceiver extends WakefulBroadcastReceiver {
 
     }
 
-    private void updateTrackedJobs(Context context, boolean networkConnected, boolean networkUnmetered) {
+    public static void setNetworkForJob(Context context, JobStatus job) {
+        if (job.hasConnectivityConstraint() || job.hasUnmeteredConstraint()) {
+            ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            boolean networkConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+            boolean networkUnmetered = !ConnectivityManagerCompat.isActiveNetworkMetered(cm);
+            job.connectivityConstraintSatisfied.set(networkConnected);
+            job.unmeteredConstraintSatisfied.set(networkUnmetered);
+        }
+    }
+
+    private static void updateTrackedJobs(Context context, boolean networkConnected, boolean networkUnmetered) {
         final JobStore jobStore = JobStore.initAndGet(context);
         synchronized (jobStore) {
             boolean changed = false;

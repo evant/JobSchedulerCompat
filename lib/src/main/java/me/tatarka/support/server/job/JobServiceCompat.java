@@ -100,13 +100,13 @@ public class JobServiceCompat extends IntentService {
     }
 
     private void scheduleJob(JobStatus job) {
-        TimeReceiver.setAlarmsForJob(this, job);
-
         if (job.hasConnectivityConstraint() || job.hasUnmeteredConstraint()) {
+            NetworkReceiver.setNetworkForJob(this, job);
             ReceiverUtils.enable(this, NetworkReceiver.class);
         }
 
         if (job.hasChargingConstraint()) {
+            PowerReceiver.setPowerForJob(this, job);
             ReceiverUtils.enable(this, PowerReceiver.class);
         }
 
@@ -117,6 +117,8 @@ public class JobServiceCompat extends IntentService {
         if (job.isPersisted()) {
             ReceiverUtils.enable(this, BootReceiver.class);
         }
+
+        TimeReceiver.setAlarmsForJob(this, job);
     }
 
     private void handleCancelJob(int jobId) {

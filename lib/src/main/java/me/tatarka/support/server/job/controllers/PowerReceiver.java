@@ -49,7 +49,14 @@ public class PowerReceiver extends WakefulBroadcastReceiver {
         }
     }
 
-    private void maybeReportNewChargingState(Context context, boolean stablePower) {
+    public static void setPowerForJob(Context context, JobStatus job) {
+        if (job.hasChargingConstraint()) {
+            boolean stablePower = isCharging(context) && !isBatteryLow(context);
+            job.chargingConstraintSatisfied.set(stablePower);
+        }
+    }
+
+    private static void maybeReportNewChargingState(Context context, boolean stablePower) {
         boolean reportChange = false;
         final JobStore jobStore = JobStore.initAndGet(context);
         synchronized (jobStore) {
@@ -89,13 +96,13 @@ public class PowerReceiver extends WakefulBroadcastReceiver {
         }
     }
 
-    private boolean isCharging(Context context) {
+    private static boolean isCharging(Context context) {
         Intent i = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         int plugged = i.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
         return plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB;
     }
 
-    private boolean isBatteryLow(Context context) {
+    private static boolean isBatteryLow(Context context) {
         return ControllerPrefs.getInstance(context).isBatteryLow();
     }
 }
