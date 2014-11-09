@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.SystemClock;
 import android.support.v4.content.WakefulBroadcastReceiver;
+import android.util.Log;
 
 import me.tatarka.support.internal.util.ArraySet;
 import me.tatarka.support.server.job.JobServiceCompat;
@@ -21,6 +22,7 @@ public class PowerReceiver extends WakefulBroadcastReceiver {
             "me.tatarka.support.server.job.controllers.PowerReceiver.ACTION_CHARGING_STABLE";
     /** Wait this long after phone is plugged in before doing any work. */
     private static final long STABLE_CHARGING_THRESHOLD_MILLIS = 2 * 60 * 1000; // 2 minutes.
+//    private static final long STABLE_CHARGING_THRESHOLD_MILLIS = 1000; // 1 second.
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -43,7 +45,7 @@ public class PowerReceiver extends WakefulBroadcastReceiver {
             maybeReportNewChargingState(context, false);
         } else if (ACTION_CHARGING_STABLE.equals(action)) {
             // Here's where we actually do the notify for a task being ready.
-            maybeReportNewChargingState(context, isBatteryLow(context));
+            maybeReportNewChargingState(context, !isBatteryLow(context));
         }
     }
 
