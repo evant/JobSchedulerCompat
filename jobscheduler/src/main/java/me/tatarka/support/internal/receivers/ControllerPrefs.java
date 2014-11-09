@@ -11,7 +11,7 @@ public class ControllerPrefs {
     private static final String KEY_BATTERY_LOW = "battery_low";
     private static final String KEY_NEXT_JOB_EXPIRED_ELAPSED_MILLIS = "next_job_expired_elapsed_millis";
     private static final String KEY_NEXT_DELAY_EXPIRED_ELAPSED_MILLIS = "next_delay_expired_elapsed_millis";
-    private static final String KEY_IDLE = "idle";
+    private static final String KEY_DAYDREAM_MODE = "daydream_mode";
 
     private static ControllerPrefs sInstance;
 
@@ -32,8 +32,8 @@ public class ControllerPrefs {
         return prefs.getBoolean(KEY_BATTERY_LOW, false);
     }
 
-    boolean isIdle() {
-        return prefs.getBoolean(KEY_IDLE, false);
+    boolean isInDaydreamMode() {
+        return prefs.getBoolean(KEY_DAYDREAM_MODE, false);
     }
 
     long getNextJobExpiredElapsedMillis() {
@@ -74,8 +74,8 @@ public class ControllerPrefs {
             return this;
         }
 
-        Editor setIdle(boolean value) {
-            editor.putBoolean(KEY_IDLE, value);
+        Editor setInDaydreamMode(boolean value) {
+            editor.putBoolean(KEY_DAYDREAM_MODE, value);
             return this;
         }
 

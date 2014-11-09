@@ -112,7 +112,7 @@ public class JobServiceCompat extends IntentService {
         }
 
         if (job.hasIdleConstraint()) {
-            ReceiverUtils.enable(this, IdleReceiver.class);
+            IdleReceiver.setIdleForJob(this, job);
         }
 
         if (job.isPersisted()) {
@@ -150,6 +150,7 @@ public class JobServiceCompat extends IntentService {
 
         JobStore jobStore = JobStore.initAndGet(this);
         List<Integer> jobsToRun = new ArrayList<Integer>();
+        boolean noJobs = false;
         synchronized (jobStore) {
             ArraySet<JobStatus> jobs = jobStore.getJobs();
             for (int i = 0; i < jobs.size(); i++) {
@@ -158,6 +159,9 @@ public class JobServiceCompat extends IntentService {
                     jobsToRun.add(job.getJobId());
                 }
             }
+            if (jobs.isEmpty()) {
+                noJobs = true;
+            }
         }
 
         if (!jobsToRun.isEmpty()) {
@@ -165,6 +169,10 @@ public class JobServiceCompat extends IntentService {
             for (int jobId : jobsToRun) {
                 JobSchedulerService.startJob(this, jobId);
             }
+        }
+
+        if (noJobs) {
+            handleJobsFinished();
         }
     }
 
@@ -224,7 +232,7 @@ public class JobServiceCompat extends IntentService {
         }
 
         if (!hasIdleConstraint) {
-            ReceiverUtils.disable(this, IdleReceiver.class);
+            IdleReceiver.unsetIdle(this);
         }
 
         if (!hasBootConstraint) {

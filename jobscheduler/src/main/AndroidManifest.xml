@@ -36,8 +36,7 @@
         </receiver>
 
         <receiver
-            android:name="me.tatarka.support.internal.receivers.IdleReceiver"
-            android:enabled="false">
+            android:name="me.tatarka.support.internal.receivers.IdleReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.SCREEN_ON" />
                 <action android:name="android.intent.action.SCREEN_OFF" />

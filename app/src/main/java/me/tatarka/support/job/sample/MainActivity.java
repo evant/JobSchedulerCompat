@@ -186,6 +186,10 @@ public class MainActivity extends ActionBarActivity {
 
     public void cancelAllJobs(View v) {
         JobScheduler tm = JobScheduler.getInstance(this);
+        List<JobInfo> pendingJobs = tm.getAllPendingJobs();
+        for (JobInfo job : pendingJobs) {
+            Log.d(TAG, "canceled job: " + job.getId());
+        }
         tm.cancelAll();
     }
 
@@ -217,12 +221,6 @@ public class MainActivity extends ActionBarActivity {
         Message m = Message.obtain(mHandler, MSG_UNCOLOUR_START);
         mHandler.sendMessageDelayed(m, 1000L); // uncolour in 1 second.
         mParamsTextView.setText("Executing: " + params.getJobId() + " " + params.getExtras());
-
-        JobScheduler jobScheduler = JobScheduler.getInstance(this);
-        List<JobInfo> pendingJobs = jobScheduler.getAllPendingJobs();
-        for (JobInfo job : pendingJobs) {
-            Log.d(TAG, "pending job: " + job);
-        }
     }
 
     /**

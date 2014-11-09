@@ -15,6 +15,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.util.SparseArray;
 
+import me.tatarka.support.internal.receivers.IdleReceiver;
 import me.tatarka.support.job.IJobCallback;
 import me.tatarka.support.job.IJobService;
 import me.tatarka.support.job.JobInfo;
@@ -232,6 +233,9 @@ public class JobSchedulerService extends Service {
         }
 
         TimeReceiver.setAlarmsForJob(this, newJob);
+        if (job.hasIdleConstraint()) {
+            IdleReceiver.setIdleForJob(this, newJob);
+        }
     }
 
     /**
@@ -243,6 +247,11 @@ public class JobSchedulerService extends Service {
      * with adjusted timing constraints.
      */
     private JobStatus rescheduleFailedJob(JobStatus job) {
+        if (job.hasIdleConstraint()) {
+            // Don't need to modify time on idle job, it will run whenever the next idle period is.
+            return job;
+        }
+        
         final long elapsedNowMillis = SystemClock.elapsedRealtime();
         final JobInfo jobInfo = job.getJob();
 
