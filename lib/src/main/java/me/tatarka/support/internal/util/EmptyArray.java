@@ -16,7 +16,7 @@
 
 package me.tatarka.support.internal.util;
 
-public final class EmptyArray {
+final class EmptyArray {
     private EmptyArray() {}
 
     public static final boolean[] BOOLEAN = new boolean[0];

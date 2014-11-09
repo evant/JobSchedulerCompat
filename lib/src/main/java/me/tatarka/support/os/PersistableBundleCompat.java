@@ -1,16 +1,12 @@
 package me.tatarka.support.os;
 
-import android.os.BaseBundle;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.PersistableBundle;
 
-import org.xmlpull.v1.XmlSerializer;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,6 +15,7 @@ import java.util.Set;
  */
 class PersistableBundleCompat {
     public static final Object EMPTY;
+
     static {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             EMPTY = PersistableBundle.EMPTY;
@@ -27,7 +24,7 @@ class PersistableBundleCompat {
         }
     }
 
-     static Object newInstance() {
+    static Object newInstance() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return new PersistableBundle();
         } else {
@@ -35,7 +32,7 @@ class PersistableBundleCompat {
         }
     }
 
-     static Object newInstance(int capacity) {
+    static Object newInstance(int capacity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return new PersistableBundle(capacity);
         } else {
@@ -43,7 +40,7 @@ class PersistableBundleCompat {
         }
     }
 
-     static Object newInstance(Object extras) {
+    static Object newInstance(Object extras) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return new PersistableBundle((PersistableBundle) extras);
         } else {
@@ -51,7 +48,7 @@ class PersistableBundleCompat {
         }
     }
 
-     static void write(Parcel parcel, Object bundle) {
+    static void write(Parcel parcel, Object bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             parcel.writePersistableBundle((PersistableBundle) bundle);
         } else {
@@ -59,7 +56,7 @@ class PersistableBundleCompat {
         }
     }
 
-     static Object read(Parcel parcel) {
+    static Object read(Parcel parcel) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return parcel.readPersistableBundle();
         } else {
@@ -67,7 +64,7 @@ class PersistableBundleCompat {
         }
     }
 
-     static void putPersistableBundle(String key, Object value, Object bundle) {
+    static void putPersistableBundle(String key, Object value, Object bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ((PersistableBundle) bundle).putPersistableBundle(key, (PersistableBundle) value);
         } else {
@@ -75,7 +72,7 @@ class PersistableBundleCompat {
         }
     }
 
-     static Object getPersistableBundle(String key, Object bundle) {
+    static Object getPersistableBundle(String key, Object bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return ((PersistableBundle) bundle).getPersistableBundle(key);
         } else {
@@ -83,14 +80,14 @@ class PersistableBundleCompat {
         }
     }
 
-     static boolean instanceOf(Object bundle) {
+    static boolean instanceOf(Object bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return bundle instanceof PersistableBundle;
         } else {
             return bundle instanceof Bundle;
         }
     }
-    
+
     static int size(Object bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return ((PersistableBundle) bundle).size();
@@ -98,7 +95,7 @@ class PersistableBundleCompat {
             return ((Bundle) bundle).size();
         }
     }
-    
+
     static boolean isEmpty(Object bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return ((PersistableBundle) bundle).isEmpty();
@@ -106,7 +103,7 @@ class PersistableBundleCompat {
             return ((Bundle) bundle).isEmpty();
         }
     }
-    
+
     static void clear(Object bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ((PersistableBundle) bundle).clear();
@@ -114,7 +111,7 @@ class PersistableBundleCompat {
             ((Bundle) bundle).clear();
         }
     }
-    
+
     static boolean containsKey(Object bundle, String key) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return ((PersistableBundle) bundle).containsKey(key);
@@ -122,7 +119,7 @@ class PersistableBundleCompat {
             return ((Bundle) bundle).containsKey(key);
         }
     }
-    
+
     static Object get(Object bundle, String key) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return ((PersistableBundle) bundle).get(key);
@@ -130,7 +127,7 @@ class PersistableBundleCompat {
             return ((Bundle) bundle).get(key);
         }
     }
-    
+
     static void remove(Object bundle, String key) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ((PersistableBundle) bundle).remove(key);
@@ -138,7 +135,7 @@ class PersistableBundleCompat {
             ((Bundle) bundle).remove(key);
         }
     }
-    
+
     static void putAll(Object bundle, Object allBundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ((PersistableBundle) bundle).putAll((PersistableBundle) allBundle);
@@ -146,7 +143,7 @@ class PersistableBundleCompat {
             ((Bundle) bundle).putAll((Bundle) allBundle);
         }
     }
-    
+
     static void putAll(Object bundle, Map map) {
         Class bundleClass;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -154,7 +151,7 @@ class PersistableBundleCompat {
         } else {
             bundleClass = Bundle.class;
         }
-        
+
         try {
             Method method = bundleClass.getDeclaredMethod("putAll", Map.class);
             method.setAccessible(true);
@@ -167,7 +164,7 @@ class PersistableBundleCompat {
             throw new RuntimeException(e);
         }
     }
-    
+
     static Set<String> keySet(Object bundle) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return ((PersistableBundle) bundle).keySet();
@@ -175,7 +172,7 @@ class PersistableBundleCompat {
             return ((Bundle) bundle).keySet();
         }
     }
-    
+
     static void putInt(Object bundle, String key, int value) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ((PersistableBundle) bundle).putInt(key, value);
@@ -183,7 +180,7 @@ class PersistableBundleCompat {
             ((Bundle) bundle).putInt(key, value);
         }
     }
-    
+
     static void putLong(Object bundle, String key, long value) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ((PersistableBundle) bundle).putLong(key, value);

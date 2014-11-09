@@ -14,13 +14,12 @@
  * limitations under the License
  */
 
-package me.tatarka.support.server.job;
+package me.tatarka.support.internal.job;
 
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.v4.util.AtomicFile;
@@ -45,9 +44,9 @@ import java.util.List;
 import me.tatarka.support.internal.util.ArraySet;
 import me.tatarka.support.internal.util.FastXmlSerializer;
 import me.tatarka.support.job.JobInfo;
-import me.tatarka.support.server.job.controllers.JobStatus;
+import me.tatarka.support.internal.receivers.JobStatus;
 import me.tatarka.support.os.PersistableBundle;
-import me.tatarka.support.server.IoThread;
+import me.tatarka.support.internal.IoThread;
 
 /**
  * Maintains the master list of jobs that the job scheduler is tracking. These jobs are compared by
@@ -59,6 +58,8 @@ import me.tatarka.support.server.IoThread;
  * This is important b/c {@link WriteJobsMapToDiskRunnable}
  * and {@link ReadJobMapFromDiskRunnable} lock on that
  * object.
+ *
+ * @hide
  */
 public class JobStore {
     private static final String TAG = "JobStore";

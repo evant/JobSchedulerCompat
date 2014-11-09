@@ -14,10 +14,9 @@
  * limitations under the License
  */
 
-package me.tatarka.support.server.job.controllers;
+package me.tatarka.support.internal.receivers;
 
 import android.content.ComponentName;
-import android.os.Parcelable;
 import android.os.SystemClock;
 import android.text.format.DateUtils;
 
@@ -99,7 +98,7 @@ public class JobStatus {
     /**
      * Create a new JobStatus that was loaded from disk. We ignore the provided
      * {@link JobInfo} time criteria because we can load a persisted periodic job
-     * from the {@link me.tatarka.support.server.job.JobStore} and still want to respect its
+     * from the {@link me.tatarka.support.internal.job.JobStore} and still want to respect its
      * wallclock runtime rather than resetting it on every boot.
      * We consider a freshly loaded job to no longer be in back-off.
      */

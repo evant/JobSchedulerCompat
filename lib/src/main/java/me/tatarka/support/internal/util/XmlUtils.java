@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** {@hide} */
+/** @hide */
 public class XmlUtils {
 
     public static void skipCurrentTag(XmlPullParser parser)

@@ -73,63 +73,63 @@ public final class ArraySet<E> implements Collection<E>, Set<E> {
 
     private int indexOf(Object key, int hash) {
         final int N = mSize;
-// Important fast case: if nothing is in here, nothing to look for.
+        // Important fast case: if nothing is in here, nothing to look for.
         if (N == 0) {
             return ~0;
         }
         int index = ContainerHelpers.binarySearch(mHashes, N, hash);
-// If the hash code wasn't found, then we have no entry for this key.
+        // If the hash code wasn't found, then we have no entry for this key.
         if (index < 0) {
             return index;
         }
-// If the key at the returned index matches, that's what we want.
+        // If the key at the returned index matches, that's what we want.
         if (key.equals(mArray[index])) {
             return index;
         }
-// Search for a matching key after the index.
+        // Search for a matching key after the index.
         int end;
         for (end = index + 1; end < N && mHashes[end] == hash; end++) {
             if (key.equals(mArray[end])) return end;
         }
-// Search for a matching key before the index.
+        // Search for a matching key before the index.
         for (int i = index - 1; i >= 0 && mHashes[i] == hash; i--) {
             if (key.equals(mArray[i])) return i;
         }
-// Key not found -- return negative value indicating where a
-// new entry for this key should go. We use the end of the
-// hash chain to reduce the number of array entries that will
-// need to be copied when inserting.
+        // Key not found -- return negative value indicating where a
+        // new entry for this key should go. We use the end of the
+        // hash chain to reduce the number of array entries that will
+        // need to be copied when inserting.
         return ~end;
     }
 
     private int indexOfNull() {
         final int N = mSize;
-// Important fast case: if nothing is in here, nothing to look for.
+        // Important fast case: if nothing is in here, nothing to look for.
         if (N == 0) {
             return ~0;
         }
         int index = ContainerHelpers.binarySearch(mHashes, N, 0);
-// If the hash code wasn't found, then we have no entry for this key.
+        // If the hash code wasn't found, then we have no entry for this key.
         if (index < 0) {
             return index;
         }
-// If the key at the returned index matches, that's what we want.
+        // If the key at the returned index matches, that's what we want.
         if (null == mArray[index]) {
             return index;
         }
-// Search for a matching key after the index.
+        // Search for a matching key after the index.
         int end;
         for (end = index + 1; end < N && mHashes[end] == 0; end++) {
             if (null == mArray[end]) return end;
         }
-// Search for a matching key before the index.
+        // Search for a matching key before the index.
         for (int i = index - 1; i >= 0 && mHashes[i] == 0; i--) {
             if (null == mArray[i]) return i;
         }
-// Key not found -- return negative value indicating where a
-// new entry for this key should go. We use the end of the
-// hash chain to reduce the number of array entries that will
-// need to be copied when inserting.
+        // Key not found -- return negative value indicating where a
+        // new entry for this key should go. We use the end of the
+        // hash chain to reduce the number of array entries that will
+        // need to be copied when inserting.
         return ~end;
     }
 
@@ -396,7 +396,7 @@ public final class ArraySet<E> implements Collection<E>, Set<E> {
     public E removeAt(int index) {
         final Object old = mArray[index];
         if (mSize <= 1) {
-// Now empty.
+            // Now empty.
             if (DEBUG) Log.d(TAG, "remove: shrink from " + mHashes.length + " to 0");
             freeArrays(mHashes, mArray, mSize);
             mHashes = EmptyArray.INT;
@@ -404,9 +404,9 @@ public final class ArraySet<E> implements Collection<E>, Set<E> {
             mSize = 0;
         } else {
             if (mHashes.length > (BASE_SIZE * 2) && mSize < mHashes.length / 3) {
-// Shrunk enough to reduce size of arrays. We don't allow it to
-// shrink smaller than (BASE_SIZE*2) to avoid flapping between
-// that and BASE_SIZE.
+                // Shrunk enough to reduce size of arrays. We don't allow it to
+                // shrink smaller than (BASE_SIZE*2) to avoid flapping between
+                // that and BASE_SIZE.
                 final int n = mSize > (BASE_SIZE * 2) ? (mSize + (mSize >> 1)) : (BASE_SIZE * 2);
                 if (DEBUG) Log.d(TAG, "remove: shrink from " + mHashes.length + " to " + n);
                 final int[] ohashes = mHashes;
@@ -546,9 +546,9 @@ public final class ArraySet<E> implements Collection<E>, Set<E> {
     }
 
     // ------------------------------------------------------------------------
-// Interop with traditional Java containers. Not as efficient as using
-// specialized collection APIs.
-// ------------------------------------------------------------------------
+    // Interop with traditional Java containers. Not as efficient as using
+    // specialized collection APIs.
+    // ------------------------------------------------------------------------
     private MapCollections<E, E> getCollection() {
         if (mCollections == null) {
             mCollections = new MapCollections<E, E>() {

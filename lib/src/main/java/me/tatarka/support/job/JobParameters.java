@@ -7,7 +7,8 @@ import android.os.Parcelable;
 import me.tatarka.support.os.PersistableBundle;
 
 /**
- * Created by evantatarka on 10/23/14.
+ * Contains the parameters used to configure/identify your job. You do not create this object
+ * yourself, instead it is handed in to your application by the System.
  */
 public class JobParameters implements Parcelable {
     private final int jobId;

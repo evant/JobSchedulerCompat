@@ -1,4 +1,4 @@
-package me.tatarka.support.job;
+package me.tatarka.support.internal;
 
 import android.Manifest;
 import android.content.Context;
@@ -8,17 +8,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import me.tatarka.support.internal.util.ArraySet;
-import me.tatarka.support.server.job.JobServiceCompat;
-import me.tatarka.support.server.job.JobStore;
-import me.tatarka.support.server.job.controllers.JobStatus;
+import me.tatarka.support.job.JobInfo;
+import me.tatarka.support.job.JobScheduler;
+import me.tatarka.support.internal.job.JobServiceCompat;
+import me.tatarka.support.internal.job.JobStore;
+import me.tatarka.support.internal.receivers.JobStatus;
 
-/**
- * Created by evantatarka on 10/21/14.
- */
-class JobSchedulerCompat extends JobScheduler {
+/** @hide */
+public class JobSchedulerCompat extends JobScheduler {
     private static JobSchedulerCompat INSTANCE;
 
-    static synchronized JobSchedulerCompat getCompatInstance(Context context) {
+    public static synchronized JobSchedulerCompat getCompatInstance(Context context) {
         if (INSTANCE == null) INSTANCE = new JobSchedulerCompat(context);
         return INSTANCE;
     }
@@ -64,7 +64,7 @@ class JobSchedulerCompat extends JobScheduler {
     private void checkPermissions(JobInfo job) {
         String packageName = context.getPackageName();
         if (pm.checkPermission(Manifest.permission.WAKE_LOCK, packageName) != PackageManager.PERMISSION_GRANTED) {
-            throw new IllegalStateException("Error: WAKE_LOCK is required on api < 21.");
+            throw new IllegalStateException("Error: the WAKE_LOCK permission is required on api < 21.");
         }
 
         if (job.getNetworkType() != JobInfo.NETWORK_TYPE_NONE) {

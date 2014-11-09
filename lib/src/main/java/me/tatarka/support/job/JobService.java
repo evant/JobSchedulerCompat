@@ -2,11 +2,26 @@ package me.tatarka.support.job;
 
 import android.app.Service;
 import android.content.Intent;
-import android.os.*;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
+import android.os.RemoteException;
 import android.util.Log;
 
+import me.tatarka.support.internal.IJobServiceCompat;
+
 /**
- * Created by evantatarka on 10/23/14.
+ * <p>Entry point for the callback from the {@link android.app.job.JobScheduler}.</p>
+ * <p>This is the base class that handles asynchronous requests that were previously scheduled. You
+ * are responsible for overriding {@link JobService#onStartJob(JobParameters)}, which is where
+ * you will implement your job logic.</p>
+ * <p>This service executes each incoming job on a {@link android.os.Handler} running on your
+ * application's main thread. This means that you <b>must</b> offload your execution logic to
+ * another thread/handler/{@link android.os.AsyncTask} of your choosing. Not doing so will result
+ * in blocking any future callbacks from the JobManager - specifically
+ * {@link #onStopJob(JobParameters)}, which is meant to inform you that the
+ * scheduling requirements are no longer being met.</p>
  */
 public abstract class JobService extends Service {
     private static final String TAG = "JobServiceCompat";
@@ -39,7 +54,7 @@ public abstract class JobService extends Service {
     /**
      * Binder for this service.
      */
-     IJobServiceCompat mBinder = new IJobServiceCompat() {
+    IJobServiceCompat mBinder = new IJobServiceCompat() {
         @Override
         public void startJob(JobParameters jobParams) {
             ensureHandler();

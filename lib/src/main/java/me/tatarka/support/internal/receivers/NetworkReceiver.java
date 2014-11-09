@@ -1,4 +1,4 @@
-package me.tatarka.support.server.job.controllers;
+package me.tatarka.support.internal.receivers;
 
 import android.content.Context;
 import android.content.Intent;
@@ -8,8 +8,8 @@ import android.support.v4.content.WakefulBroadcastReceiver;
 import android.support.v4.net.ConnectivityManagerCompat;
 
 import me.tatarka.support.internal.util.ArraySet;
-import me.tatarka.support.server.job.JobServiceCompat;
-import me.tatarka.support.server.job.JobStore;
+import me.tatarka.support.internal.job.JobServiceCompat;
+import me.tatarka.support.internal.job.JobStore;
 
 /**
  * @hide

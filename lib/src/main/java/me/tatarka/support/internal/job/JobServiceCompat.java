@@ -1,4 +1,4 @@
-package me.tatarka.support.server.job;
+package me.tatarka.support.internal.job;
 
 import android.app.IntentService;
 import android.content.Context;
@@ -6,21 +6,19 @@ import android.content.Intent;
 import android.os.PowerManager;
 import android.support.v4.content.WakefulBroadcastReceiver;
 
-import org.apache.http.entity.ContentProducer;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import me.tatarka.support.internal.util.ArraySet;
 import me.tatarka.support.job.JobInfo;
-import me.tatarka.support.server.job.controllers.BootReceiver;
-import me.tatarka.support.server.job.controllers.ControllerPrefs;
-import me.tatarka.support.server.job.controllers.IdleReceiver;
-import me.tatarka.support.server.job.controllers.JobStatus;
-import me.tatarka.support.server.job.controllers.NetworkReceiver;
-import me.tatarka.support.server.job.controllers.PowerReceiver;
-import me.tatarka.support.server.job.controllers.ReceiverUtils;
-import me.tatarka.support.server.job.controllers.TimeReceiver;
+import me.tatarka.support.internal.receivers.BootReceiver;
+import me.tatarka.support.internal.receivers.ControllerPrefs;
+import me.tatarka.support.internal.receivers.IdleReceiver;
+import me.tatarka.support.internal.receivers.JobStatus;
+import me.tatarka.support.internal.receivers.NetworkReceiver;
+import me.tatarka.support.internal.receivers.PowerReceiver;
+import me.tatarka.support.internal.receivers.ReceiverUtils;
+import me.tatarka.support.internal.receivers.TimeReceiver;
 
 /**
  * @hide *

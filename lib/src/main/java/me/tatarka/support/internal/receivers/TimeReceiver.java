@@ -1,4 +1,4 @@
-package me.tatarka.support.server.job.controllers;
+package me.tatarka.support.internal.receivers;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -13,12 +13,12 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
+import me.tatarka.support.internal.job.JobServiceCompat;
+import me.tatarka.support.internal.job.JobStore;
 import me.tatarka.support.internal.util.ArraySet;
-import me.tatarka.support.server.job.JobServiceCompat;
-import me.tatarka.support.server.job.JobStore;
 
 /**
- * Created by evantatarka on 11/8/14.
+ * @hide
  */
 public class TimeReceiver extends WakefulBroadcastReceiver {
     private static final String ACTION_JOB_EXPIRED =

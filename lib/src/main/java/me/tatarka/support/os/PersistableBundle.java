@@ -1,6 +1,5 @@
 package me.tatarka.support.os;
 
-import android.os.BaseBundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -17,7 +16,8 @@ import java.util.Set;
 import me.tatarka.support.internal.util.XmlUtils;
 
 /**
- * Created by evan on 10/28/14.
+ * A mapping from String values to various types that can be saved to persistent and later
+ * restored.
  */
 public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.WriteMapCallback {
     private static final String TAG_PERSISTABLEMAP = "pbundle_as_map";

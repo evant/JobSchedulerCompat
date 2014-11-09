@@ -1,4 +1,4 @@
-package me.tatarka.support.server.job.controllers;
+package me.tatarka.support.internal.receivers;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -8,11 +8,10 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.SystemClock;
 import android.support.v4.content.WakefulBroadcastReceiver;
-import android.util.Log;
 
 import me.tatarka.support.internal.util.ArraySet;
-import me.tatarka.support.server.job.JobServiceCompat;
-import me.tatarka.support.server.job.JobStore;
+import me.tatarka.support.internal.job.JobServiceCompat;
+import me.tatarka.support.internal.job.JobStore;
 
 /**
  * @hide

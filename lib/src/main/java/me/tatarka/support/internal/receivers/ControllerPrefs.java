@@ -1,10 +1,10 @@
-package me.tatarka.support.server.job.controllers;
+package me.tatarka.support.internal.receivers;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 
 /**
- * Created by evantatarka on 11/8/14.
+ * @hide
  */
 public class ControllerPrefs {
     private static final String PREFS_NAME = "me.tatarka.support.job.controllers.PREFS";

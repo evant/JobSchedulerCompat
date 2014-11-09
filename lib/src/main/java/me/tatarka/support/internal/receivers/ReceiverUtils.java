@@ -1,4 +1,4 @@
-package me.tatarka.support.server.job.controllers;
+package me.tatarka.support.internal.receivers;
 
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;

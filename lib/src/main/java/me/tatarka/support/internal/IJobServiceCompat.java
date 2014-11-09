@@ -1,4 +1,4 @@
-package me.tatarka.support.job;
+package me.tatarka.support.internal;
 
 import android.annotation.TargetApi;
 import android.os.Build;
@@ -8,15 +8,16 @@ import android.os.RemoteException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import me.tatarka.support.job.IJobCallback;
+import me.tatarka.support.job.IJobService;
+import me.tatarka.support.job.JobParameters;
 import me.tatarka.support.os.PersistableBundle;
 
-/**
- * Created by evan on 10/27/14.
- */
-abstract class IJobServiceCompat {
+/** @hide */
+public abstract class IJobServiceCompat {
     private IBinder mBinder;
 
-    IJobServiceCompat() {
+    public IJobServiceCompat() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             mBinder = new android.app.job.IJobService.Stub() {
                 @Override

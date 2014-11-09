@@ -5,6 +5,9 @@ import android.os.Build;
 
 import java.util.List;
 
+import me.tatarka.support.internal.JobSchedulerCompat;
+import me.tatarka.support.internal.JobSchedulerLollipopDelegate;
+
 /**
  * Created by evantatarka on 10/21/14.
  */

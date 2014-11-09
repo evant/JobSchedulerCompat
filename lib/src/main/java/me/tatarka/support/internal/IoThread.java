@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package me.tatarka.support.server;
+package me.tatarka.support.internal;
 
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -23,6 +23,8 @@ import android.os.HandlerThread;
  * Shared singleton I/O thread for the system.  This is a thread for non-background
  * service operations that can potential block briefly on network IO operations
  * (not waiting for data itself, but communicating with network daemons).
+ *
+ * @hide
  */
 public final class IoThread extends HandlerThread {
     private static IoThread sInstance;

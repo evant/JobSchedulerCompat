@@ -1,4 +1,4 @@
-package me.tatarka.support.job;
+package me.tatarka.support.internal;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -7,18 +7,18 @@ import android.os.Build;
 import java.util.ArrayList;
 import java.util.List;
 
+import me.tatarka.support.job.JobInfo;
+import me.tatarka.support.job.JobScheduler;
 import me.tatarka.support.os.PersistableBundle;
 
-/**
- * Created by evantatarka on 10/21/14.
- */
+/** @hide */
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-class JobSchedulerLollipopDelegate extends JobScheduler {
+public class JobSchedulerLollipopDelegate extends JobScheduler {
     private Context context;
     private android.app.job.JobScheduler jobScheduler;
 
     private static JobSchedulerLollipopDelegate INSTANCE;
-    static synchronized JobSchedulerLollipopDelegate getLollipopInstance(Context context) {
+    public static synchronized JobSchedulerLollipopDelegate getLollipopInstance(Context context) {
         if (INSTANCE == null) INSTANCE = new JobSchedulerLollipopDelegate(context);
         return INSTANCE;
     }

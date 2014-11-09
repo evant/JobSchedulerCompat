@@ -1,4 +1,4 @@
-package me.tatarka.support.server.job;
+package me.tatarka.support.internal.job;
 
 import android.app.Service;
 import android.content.ComponentName;
@@ -19,8 +19,8 @@ import me.tatarka.support.job.IJobCallback;
 import me.tatarka.support.job.IJobService;
 import me.tatarka.support.job.JobInfo;
 import me.tatarka.support.job.JobParameters;
-import me.tatarka.support.server.job.controllers.JobStatus;
-import me.tatarka.support.server.job.controllers.TimeReceiver;
+import me.tatarka.support.internal.receivers.JobStatus;
+import me.tatarka.support.internal.receivers.TimeReceiver;
 
 /**
  * @hide
