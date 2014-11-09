@@ -58,7 +58,7 @@ JobScheduler jobScheduler = JobScheduler.getInstance(context);
 
 // Extras for your job.
 PersitableBundle extras = new PersitableBundle();
-extras.putString("key", "value);
+extras.putString("key", "value");
 
 // Construct a new job with your service and some constraints.
 // See the javadoc for more detail.
