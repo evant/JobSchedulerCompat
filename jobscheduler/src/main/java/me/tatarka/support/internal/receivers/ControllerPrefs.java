@@ -1,5 +1,6 @@
 package me.tatarka.support.internal.receivers;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -44,6 +45,7 @@ public class ControllerPrefs {
         return prefs.getLong(KEY_NEXT_DELAY_EXPIRED_ELAPSED_MILLIS, 0);
     }
 
+    @SuppressLint("CommitPrefEdits")
     Editor edit() {
         return new Editor(prefs.edit());
     }

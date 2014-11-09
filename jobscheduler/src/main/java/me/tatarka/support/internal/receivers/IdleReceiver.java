@@ -1,5 +1,6 @@
 package me.tatarka.support.internal.receivers;
 
+import android.annotation.TargetApi;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -123,14 +124,20 @@ public class IdleReceiver extends WakefulBroadcastReceiver {
      * Call this as soon as we get a chance, it will be unregistered whenever our app is killed.
      */
     public static void enableReceiver(Context context) {
+        IntentFilter filter = getFilter();
+        sReceiver = new IdleReceiver();
+        context.getApplicationContext().registerReceiver(sReceiver, filter);
+    }
+    
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
+    private static IntentFilter getFilter()  {
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             filter.addAction(Intent.ACTION_DREAMING_STARTED);
             filter.addAction(Intent.ACTION_DREAMING_STOPPED);
         }
-        sReceiver = new IdleReceiver();
-        context.getApplicationContext().registerReceiver(sReceiver, filter);
+        return filter;
     }
 
     private static void disableReceiver(Context context) {
@@ -154,6 +161,7 @@ public class IdleReceiver extends WakefulBroadcastReceiver {
         startWakefulService(context, JobServiceCompat.maybeRunJobs(context));
     }
 
+    @TargetApi(Build.VERSION_CODES.KITKAT)
     private static void compatSetWindow(AlarmManager am, int type, long windowStartMillis, long windowLengthMillis, PendingIntent pendingIntent) {
         // Samsung devices have a bug where setWindow() may run before the start time.
         // https://code.google.com/p/android/issues/detail?id=69525

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Ignore NewApi in aidl files, as they are not used on older versions -->
+    <issue id="NewApi">
+        <ignore path="build/generated/source/aidl/debug/android/app/job/IJobCallback.java" />
+        <ignore path="build/generated/source/aidl/debug/android/app/job/IJobService.java" />
+        <ignore path="build/generated/source/aidl/release/android/app/job/IJobCallback.java" />
+        <ignore path="build/generated/source/aidl/release/android/app/job/IJobService.java" />
+    </issue>
+</lint>

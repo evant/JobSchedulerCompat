@@ -1,5 +1,6 @@
 package me.tatarka.support.os;
 
+import android.annotation.TargetApi;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
@@ -13,6 +14,7 @@ import java.util.Set;
 /**
  * Created by evantatarka on 10/21/14.
  */
+@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 class PersistableBundleCompat {
     public static final Object EMPTY;
 
