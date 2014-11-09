@@ -138,8 +138,8 @@ public class JobServiceCompat extends IntentService {
 
     private JobStatus rescheduleJob(JobStatus job) {
         if (job.hasIdleConstraint()) {
-            // TODO: different reschedule policy
-            throw new UnsupportedOperationException("rescheduling idle tasks is not yet implemented");
+            // Can just re-add the current job, it will be executed in the next idle window.
+            return job;
         }
 
         final long elapsedNowMillis = SystemClock.elapsedRealtime();
