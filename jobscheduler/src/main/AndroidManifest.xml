@@ -2,10 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="me.tatarka.support.job">
 
-    <application
-        android:allowBackup="true"
-        android:icon="@drawable/ic_launcher"
-        android:label="@string/app_name">
+    <application>
         <service android:name="me.tatarka.support.internal.job.JobServiceCompat" />
 
         <service android:name="me.tatarka.support.internal.job.JobSchedulerService" />
