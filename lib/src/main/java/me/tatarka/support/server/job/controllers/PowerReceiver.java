@@ -69,7 +69,8 @@ public class PowerReceiver extends WakefulBroadcastReceiver {
 
     private void setStableChargingAlarm(Context context) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(ACTION_CHARGING_STABLE);
+        Intent intent = new Intent(context, PowerReceiver.class);
+        intent.setAction(ACTION_CHARGING_STABLE);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
 
         final long alarmTriggerElapsed = SystemClock.elapsedRealtime() + STABLE_CHARGING_THRESHOLD_MILLIS;
@@ -77,16 +78,13 @@ public class PowerReceiver extends WakefulBroadcastReceiver {
     }
 
     private void cancelStableChargingAlarm(Context context) {
-        PendingIntent pendingIntent = getExistingAlarmIntent(context);
+        Intent intent = new Intent(context, PowerReceiver.class);
+        intent.setAction(ACTION_CHARGING_STABLE);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_NO_CREATE);
         if (pendingIntent != null) {
             AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
             am.cancel(pendingIntent);
         }
-    }
-
-    private PendingIntent getExistingAlarmIntent(Context context) {
-        Intent intent = new Intent(ACTION_CHARGING_STABLE);
-        return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_NO_CREATE);
     }
 
     private boolean isCharging(Context context) {

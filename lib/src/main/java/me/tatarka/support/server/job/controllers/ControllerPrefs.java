@@ -11,6 +11,7 @@ class ControllerPrefs {
     private static final String KEY_BATTERY_LOW = "battery_low";
     private static final String KEY_NEXT_JOB_EXPIRED_ELAPSED_MILLIS = "next_job_expired_elapsed_millis";
     private static final String KEY_NEXT_DELAY_EXPIRED_ELAPSED_MILLIS = "next_delay_expired_elapsed_millis";
+    private static final String KEY_IDLE = "idle";
 
     private static ControllerPrefs sInstance;
 
@@ -29,6 +30,10 @@ class ControllerPrefs {
 
     boolean isBatteryLow() {
         return prefs.getBoolean(KEY_BATTERY_LOW, false);
+    }
+
+    boolean isIdle() {
+        return prefs.getBoolean(KEY_IDLE, false);
     }
 
     long getNextJobExpiredElapsedMillis() {
@@ -62,6 +67,11 @@ class ControllerPrefs {
 
         Editor setNextDelayExipredElapsedMillis(long value) {
             editor.putLong(KEY_NEXT_DELAY_EXPIRED_ELAPSED_MILLIS, value);
+            return this;
+        }
+
+        Editor setIdle(boolean value) {
+            editor.putBoolean(KEY_IDLE, value);
             return this;
         }
 

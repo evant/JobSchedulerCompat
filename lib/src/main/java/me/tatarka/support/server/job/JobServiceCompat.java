@@ -13,6 +13,7 @@ import java.util.List;
 import me.tatarka.support.internal.util.ArraySet;
 import me.tatarka.support.job.JobInfo;
 import me.tatarka.support.server.job.controllers.BootReceiver;
+import me.tatarka.support.server.job.controllers.IdleReceiver;
 import me.tatarka.support.server.job.controllers.JobStatus;
 import me.tatarka.support.server.job.controllers.NetworkReceiver;
 import me.tatarka.support.server.job.controllers.PowerReceiver;
@@ -116,6 +117,10 @@ public class JobServiceCompat extends IntentService {
             ReceiverUtils.enable(this, PowerReceiver.class);
         }
 
+        if (job.hasIdleConstraint()) {
+            ReceiverUtils.enable(this, IdleReceiver.class);
+        }
+
         if (job.isPersisted()) {
             ReceiverUtils.enable(this, BootReceiver.class);
         }
@@ -215,6 +220,7 @@ public class JobServiceCompat extends IntentService {
         JobStore jobStore = JobStore.initAndGet(this);
         boolean hasNetworkConstraint = false;
         boolean hasPowerConstraint = false;
+        boolean hasIdleConstraint = false;
         boolean hasBootConstraint = false;
 
         synchronized (jobStore) {
@@ -230,11 +236,15 @@ public class JobServiceCompat extends IntentService {
                     hasPowerConstraint = true;
                 }
 
+                if (job.hasIdleConstraint()) {
+                    hasIdleConstraint = true;
+                }
+
                 if (job.isPersisted()) {
                     hasBootConstraint = true;
                 }
 
-                if (hasNetworkConstraint && hasPowerConstraint && hasBootConstraint) {
+                if (hasNetworkConstraint && hasPowerConstraint && hasBootConstraint && hasIdleConstraint) {
                     break;
                 }
             }
@@ -246,6 +256,10 @@ public class JobServiceCompat extends IntentService {
 
         if (!hasPowerConstraint) {
             ReceiverUtils.disable(this, PowerReceiver.class);
+        }
+
+        if (!hasIdleConstraint) {
+            ReceiverUtils.disable(this, IdleReceiver.class);
         }
 
         if (!hasBootConstraint) {

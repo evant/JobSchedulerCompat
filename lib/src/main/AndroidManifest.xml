@@ -15,7 +15,6 @@
 
         <receiver
             android:name="me.tatarka.support.server.job.controllers.NetworkReceiver"
-            android:exported="false"
             android:enabled="false">
             <intent-filter>
                 <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
@@ -24,7 +23,6 @@
 
         <receiver
             android:name="me.tatarka.support.server.job.controllers.PowerReceiver"
-            android:exported="false"
             android:enabled="false">
             <intent-filter>
                 <action android:name="android.intent.action.ACTION_BATTERY_LOW" />
@@ -37,10 +35,21 @@
 
         <receiver
             android:name="me.tatarka.support.server.job.controllers.BootReceiver"
-            android:exported="false"
             android:enabled="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="me.tatarka.support.server.job.controllers.IdleReceiver"
+            android:enabled="false">
+            <intent-filter>
+                <action android:name="android.intent.action.SCREEN_ON" />
+                <action android:name="android.intent.action.SCREEN_OFF" />
+                <action android:name="android.intent.action.DREAMING_STARTED" />
+                <action android:name="android.intent.action.DREAMING_STOPPED" />
+                <action android:name="me.tatarka.support.server.job.controllers.IdleReceiver.ACTION_TRIGGER_IDLE" />
             </intent-filter>
         </receiver>
 
