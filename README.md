@@ -1,5 +1,6 @@
 JobSchedulerCompat
 ==================
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/me.tatarka.support/jobscheudler/badge.svg?style=flat)](https://maven-badges.herokuapp.com/maven-central/me.tatarka.support/jobscheduler)
 
 A backport of Android Lollipop's JobScheduler to api 10+.
 
