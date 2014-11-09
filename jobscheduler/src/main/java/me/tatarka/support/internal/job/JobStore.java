@@ -16,6 +16,7 @@
 
 package me.tatarka.support.internal.job;
 
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
@@ -631,7 +632,10 @@ public class JobStore {
         // rebooted yet.
         Intent intent = new Intent(mContext, JobSchedulerService.class)
                 .setAction(jobStatus.toShortString());
-        PendingIntent.getService(mContext, jobStatus.getJobId(), intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        PendingIntent pendingIntent = PendingIntent.getService(mContext, jobStatus.getJobId(), intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        // Have the alarm manager hold on to our pending intent so it will still be there even if our app is killed.
+        AlarmManager am = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
+        am.set(AlarmManager.ELAPSED_REALTIME, Long.MAX_VALUE, pendingIntent);
     }
 
     private void unmarkForBootSession(JobStatus jobStatus) {
@@ -639,6 +643,8 @@ public class JobStore {
                 .setAction(jobStatus.toShortString());
         PendingIntent pendingIntent = PendingIntent.getService(mContext, jobStatus.getJobId(), intent, PendingIntent.FLAG_NO_CREATE);
         if (pendingIntent != null) {
+            AlarmManager am = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
+            am.cancel(pendingIntent);
             pendingIntent.cancel();
         }
     }
