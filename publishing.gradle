@@ -37,31 +37,31 @@ uploadArchives {
                     authentication(userName: username, password: password)
                 }
             }
-            
-            pom.project {
-                name githubname
-                packaging 'aar'
-                description 'A backport of Android\'s JobScheduler to api 9+'
-                url "https://github.com/evant/$githubname"
-                scm {
-                    url "git@github.com:evant/${githubname}.git"
-                    connection "scm:git:git@github.com:evant/${githubname}.git"
-                    developerConnection "scm:git:git@github.com:evant/${githubname}.git"
-                }
-                licenses {
-                    license {
-                        name 'The Apache Software License, Version 2.0'
-                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                        distribution 'repo'
-                    }
-                }
-                developers {
-                    developer {
-                        id 'evant'
-                        name 'Evan Tatarka'
-                    }
-                }
-            }
+        }
+    }
+}
+
+[uploadArchives.repositories.mavenDeployer, install.repositories.mavenInstaller]*.pom*.project {
+    name githubname
+    packaging 'aar'
+    description githubdescription
+    url "https://github.com/evant/$githubname"
+    scm {
+        url "git@github.com:evant/${githubname}.git"
+        connection "scm:git:git@github.com:evant/${githubname}.git"
+        developerConnection "scm:git:git@github.com:evant/${githubname}.git"
+    }
+    licenses {
+        license {
+            name 'The Apache Software License, Version 2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            distribution 'repo'
+        }
+    }
+    developers {
+        developer {
+            id 'evant'
+            name 'Evan Tatarka'
         }
     }
 }
