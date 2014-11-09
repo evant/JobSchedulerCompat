@@ -14,15 +14,17 @@
  * limitations under the License
  */
 
-package me.tatarka.support.job;
+package me.tatarka.support.server.job.controllers;
 
 import android.content.ComponentName;
+import android.os.Parcelable;
 import android.os.SystemClock;
 import android.text.format.DateUtils;
 
 import java.io.PrintWriter;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import me.tatarka.support.job.JobInfo;
 import me.tatarka.support.os.PersistableBundle;
 
 /**
@@ -46,12 +48,12 @@ public class JobStatus {
     final String tag;
 
     // Constraints.
-    final AtomicBoolean chargingConstraintSatisfied = new AtomicBoolean();
-    final AtomicBoolean timeDelayConstraintSatisfied = new AtomicBoolean();
-    final AtomicBoolean deadlineConstraintSatisfied = new AtomicBoolean();
-    final AtomicBoolean idleConstraintSatisfied = new AtomicBoolean();
-    final AtomicBoolean unmeteredConstraintSatisfied = new AtomicBoolean();
-    final AtomicBoolean connectivityConstraintSatisfied = new AtomicBoolean();
+    public final AtomicBoolean chargingConstraintSatisfied = new AtomicBoolean();
+    public final AtomicBoolean timeDelayConstraintSatisfied = new AtomicBoolean();
+    public final AtomicBoolean deadlineConstraintSatisfied = new AtomicBoolean();
+    public final AtomicBoolean idleConstraintSatisfied = new AtomicBoolean();
+    public final AtomicBoolean unmeteredConstraintSatisfied = new AtomicBoolean();
+    public final AtomicBoolean connectivityConstraintSatisfied = new AtomicBoolean();
 
     /**
      * Earliest point in the future at which this job will be eligible to run. A value of 0
@@ -96,8 +98,8 @@ public class JobStatus {
 
     /**
      * Create a new JobStatus that was loaded from disk. We ignore the provided
-     * {@link android.app.job.JobInfo} time criteria because we can load a persisted periodic job
-     * from the {@link com.android.server.job.JobStore} and still want to respect its
+     * {@link JobInfo} time criteria because we can load a persisted periodic job
+     * from the {@link me.tatarka.support.server.job.JobStore} and still want to respect its
      * wallclock runtime rather than resetting it on every boot.
      * We consider a freshly loaded job to no longer be in back-off.
      */

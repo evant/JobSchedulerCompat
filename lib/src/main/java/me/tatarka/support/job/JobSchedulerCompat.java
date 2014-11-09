@@ -3,7 +3,13 @@ package me.tatarka.support.job;
 import android.content.Context;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import me.tatarka.support.internal.util.ArraySet;
+import me.tatarka.support.server.job.JobServiceCompat;
+import me.tatarka.support.server.job.JobStore;
+import me.tatarka.support.server.job.controllers.JobStatus;
 
 /**
  * Created by evantatarka on 10/21/14.
@@ -17,11 +23,9 @@ class JobSchedulerCompat extends JobScheduler {
     }
 
     private Context context;
-    private JobPersister jobPersister;
 
     private JobSchedulerCompat(Context context) {
         this.context = context.getApplicationContext();
-        this.jobPersister = JobPersister.getInstance(context);
     }
 
     @Override
@@ -36,7 +40,15 @@ class JobSchedulerCompat extends JobScheduler {
 
     @Override
     public synchronized List<JobInfo> getAllPendingJobs() {
-        return jobPersister.getPendingJobs();
+        JobStore jobStore = JobStore.initAndGet(context);
+        List<JobInfo> result = new ArrayList<JobInfo>();
+        synchronized (jobStore) {
+            ArraySet<JobStatus> jobs = jobStore.getJobs();
+            for (int i = 0; i < jobs.size(); i++) {
+                result.add(jobs.valueAt(i).getJob());
+            }
+        }
+        return result;
     }
 
     @Override

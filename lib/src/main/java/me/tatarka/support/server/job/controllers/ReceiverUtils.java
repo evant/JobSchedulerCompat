@@ -1,4 +1,4 @@
-package me.tatarka.support.job;
+package me.tatarka.support.server.job.controllers;
 
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -9,14 +9,17 @@ import static android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
 import static android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
 import static android.content.pm.PackageManager.DONT_KILL_APP;
 
-class ReceiverUtils {
-    static <T extends BroadcastReceiver> void enable(Context context, Class<T> receiverClass) {
+/** @hide */
+public final class ReceiverUtils {
+    private ReceiverUtils() {}
+
+    public static <T extends BroadcastReceiver> void enable(Context context, Class<T> receiverClass) {
         ComponentName receiver = new ComponentName(context, receiverClass);
         PackageManager pm = context.getPackageManager();
         pm.setComponentEnabledSetting(receiver, COMPONENT_ENABLED_STATE_ENABLED, DONT_KILL_APP);
     }
 
-    static <T extends BroadcastReceiver> void disable(Context context, Class<T> receiverClass) {
+    public static <T extends BroadcastReceiver> void disable(Context context, Class<T> receiverClass) {
         ComponentName receiver = new ComponentName(context, receiverClass);
         PackageManager pm = context.getPackageManager();
         pm.setComponentEnabledSetting(receiver, COMPONENT_ENABLED_STATE_DISABLED, DONT_KILL_APP);

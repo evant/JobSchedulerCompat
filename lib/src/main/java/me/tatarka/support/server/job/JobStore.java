@@ -14,26 +14,22 @@
  * limitations under the License
  */
 
-package me.tatarka.support.job;
+package me.tatarka.support.server.job;
 
+import android.app.PendingIntent;
 import android.content.ComponentName;
-import android.app.job.JobInfo;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.PersistableBundle;
 import android.os.SystemClock;
-import android.os.UserHandle;
-import android.util.AtomicFile;
-import android.util.ArraySet;
+import android.support.v4.util.AtomicFile;
 import android.util.Pair;
-import android.util.Slog;
 import android.util.Xml;
 
-import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.util.FastXmlSerializer;
-import com.android.server.IoThread;
-import com.android.server.job.controllers.JobStatus;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlSerializer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -45,26 +41,30 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
-import org.xmlpull.v1.XmlSerializer;
+import me.tatarka.support.internal.util.ArraySet;
+import me.tatarka.support.internal.util.FastXmlSerializer;
+import me.tatarka.support.job.JobInfo;
+import me.tatarka.support.server.job.controllers.JobStatus;
+import me.tatarka.support.os.PersistableBundle;
+import me.tatarka.support.server.IoThread;
 
 /**
  * Maintains the master list of jobs that the job scheduler is tracking. These jobs are compared by
  * reference, so none of the functions in this class should make a copy.
  * Also handles read/write of persisted jobs.
- *
+ * <p/>
  * Note on locking:
- *      All callers to this class must <strong>lock on the class object they are calling</strong>.
- *      This is important b/c {@link com.android.server.job.JobStore.WriteJobsMapToDiskRunnable}
- *      and {@link com.android.server.job.JobStore.ReadJobMapFromDiskRunnable} lock on that
- *      object.
+ * All callers to this class must <strong>lock on the class object they are calling</strong>.
+ * This is important b/c {@link WriteJobsMapToDiskRunnable}
+ * and {@link ReadJobMapFromDiskRunnable} lock on that
+ * object.
  */
 public class JobStore {
     private static final String TAG = "JobStore";
-    private static final boolean DEBUG = JobSchedulerService.DEBUG;
 
-    /** Threshold to adjust how often we want to write to the db. */
+    /**
+     * Threshold to adjust how often we want to write to the db.
+     */
     private static final int MAX_OPS_BEFORE_WRITE = 1;
     final ArraySet<JobStatus> mJobSet;
     final Context mContext;
@@ -73,29 +73,19 @@ public class JobStore {
 
     private static final Object sSingletonLock = new Object();
     private final AtomicFile mJobsFile;
-    /** Handler backed by IoThread for writing to disk. */
+    /**
+     * Handler backed by IoThread for writing to disk.
+     */
     private final Handler mIoHandler = IoThread.getHandler();
     private static JobStore sSingleton;
 
-    /** Used by the {@link JobSchedulerService} to instantiate the JobStore. */
-    static JobStore initAndGet(JobSchedulerService jobManagerService) {
+    public static JobStore initAndGet(Context context) {
         synchronized (sSingletonLock) {
             if (sSingleton == null) {
-                sSingleton = new JobStore(jobManagerService.getContext(),
-                        Environment.getDataDirectory());
+                sSingleton = new JobStore(context, Environment.getDataDirectory());
             }
             return sSingleton;
         }
-    }
-
-    /**
-     * @return A freshly initialized job store object, with no loaded jobs.
-     */
-    @VisibleForTesting
-    public static JobStore initAndGetForTesting(Context context, File dataDir) {
-        JobStore jobStoreUnderTest = new JobStore(context, dataDir);
-        jobStoreUnderTest.clear();
-        return jobStoreUnderTest;
     }
 
     /**
@@ -118,28 +108,27 @@ public class JobStore {
     /**
      * Add a job to the master list, persisting it if necessary. If the JobStatus already exists,
      * it will be replaced.
+     *
      * @param jobStatus Job to add.
      * @return Whether or not an equivalent JobStatus was replaced by this operation.
      */
     public boolean add(JobStatus jobStatus) {
         boolean replaced = mJobSet.remove(jobStatus);
         mJobSet.add(jobStatus);
-        if (jobStatus.isPersisted()) {
-            maybeWriteStatusToDiskAsync();
+        if (!jobStatus.isPersisted()) {
+            markForBootSession(jobStatus);
         }
-        if (DEBUG) {
-            Slog.d(TAG, "Added job status to store: " + jobStatus);
-        }
+        maybeWriteStatusToDiskAsync();
         return replaced;
     }
 
     /**
      * Whether this jobStatus object already exists in the JobStore.
      */
-    public boolean containsJobIdForUid(int jobId, int uId) {
-        for (int i=mJobSet.size()-1; i>=0; i--) {
+    public boolean containsJobId(int jobId) {
+        for (int i = mJobSet.size() - 1; i >= 0; i--) {
             JobStatus ts = mJobSet.valueAt(i);
-            if (ts.getUid() == uId && ts.getJobId() == jobId) {
+            if (ts.matches(jobId)) {
                 return true;
             }
         }
@@ -156,70 +145,41 @@ public class JobStore {
 
     /**
      * Remove the provided job. Will also delete the job if it was persisted.
+     *
      * @return Whether or not the job existed to be removed.
      */
     public boolean remove(JobStatus jobStatus) {
         boolean removed = mJobSet.remove(jobStatus);
         if (!removed) {
-            if (DEBUG) {
-                Slog.d(TAG, "Couldn't remove job: didn't exist: " + jobStatus);
-            }
             return false;
         }
-        if (jobStatus.isPersisted()) {
-            maybeWriteStatusToDiskAsync();
+        if (!jobStatus.isPersisted()) {
+            unmarkForBootSession(jobStatus);
         }
+        maybeWriteStatusToDiskAsync();
         return removed;
     }
 
-    @VisibleForTesting
     public void clear() {
+        for (int i = 0; i < mJobSet.size(); i++) {
+            JobStatus jobStatus = mJobSet.valueAt(i);
+            if (!jobStatus.isPersisted()) {
+                unmarkForBootSession(jobStatus);
+            }
+        }
         mJobSet.clear();
         maybeWriteStatusToDiskAsync();
     }
 
     /**
-     * @param userHandle User for whom we are querying the list of jobs.
-     * @return A list of all the jobs scheduled by the provided user. Never null.
-     */
-    public List<JobStatus> getJobsByUser(int userHandle) {
-        List<JobStatus> matchingJobs = new ArrayList<JobStatus>();
-        Iterator<JobStatus> it = mJobSet.iterator();
-        while (it.hasNext()) {
-            JobStatus ts = it.next();
-            if (UserHandle.getUserId(ts.getUid()) == userHandle) {
-                matchingJobs.add(ts);
-            }
-        }
-        return matchingJobs;
-    }
-
-    /**
-     * @param uid Uid of the requesting app.
-     * @return All JobStatus objects for a given uid from the master list. Never null.
-     */
-    public List<JobStatus> getJobsByUid(int uid) {
-        List<JobStatus> matchingJobs = new ArrayList<JobStatus>();
-        Iterator<JobStatus> it = mJobSet.iterator();
-        while (it.hasNext()) {
-            JobStatus ts = it.next();
-            if (ts.getUid() == uid) {
-                matchingJobs.add(ts);
-            }
-        }
-        return matchingJobs;
-    }
-
-    /**
-     * @param uid Uid of the requesting app.
      * @param jobId Job id, specified at schedule-time.
      * @return the JobStatus that matches the provided uId and jobId, or null if none found.
      */
-    public JobStatus getJobByUidAndJobId(int uid, int jobId) {
+    public JobStatus getJobByJobId(int jobId) {
         Iterator<JobStatus> it = mJobSet.iterator();
         while (it.hasNext()) {
             JobStatus ts = it.next();
-            if (ts.getUid() == uid && ts.getJobId() == jobId) {
+            if (ts.matches(jobId)) {
                 return ts;
             }
         }
@@ -233,11 +193,17 @@ public class JobStore {
         return mJobSet;
     }
 
-    /** Version of the db schema. */
+    /**
+     * Version of the db schema.
+     */
     private static final int JOBS_FILE_VERSION = 0;
-    /** Tag corresponds to constraints this job needs. */
+    /**
+     * Tag corresponds to constraints this job needs.
+     */
     private static final String XML_TAG_PARAMS_CONSTRAINTS = "constraints";
-    /** Tag corresponds to execution parameters. */
+    /**
+     * Tag corresponds to execution parameters.
+     */
     private static final String XML_TAG_PERIODIC = "periodic";
     private static final String XML_TAG_ONEOFF = "one-off";
     private static final String XML_TAG_EXTRAS = "extras";
@@ -245,21 +211,18 @@ public class JobStore {
     /**
      * Every time the state changes we write all the jobs in one swath, instead of trying to
      * track incremental changes.
+     *
      * @return Whether the operation was successful. This will only fail for e.g. if the system is
      * low on storage. If this happens, we continue as normal
      */
     private void maybeWriteStatusToDiskAsync() {
         mDirtyOperations++;
         if (mDirtyOperations >= MAX_OPS_BEFORE_WRITE) {
-            if (DEBUG) {
-                Slog.v(TAG, "Writing jobs to disk.");
-            }
             mIoHandler.post(new WriteJobsMapToDiskRunnable());
         }
     }
 
-    @VisibleForTesting
-    public void readJobMapFromDisk(ArraySet<JobStatus> jobSet) {
+    private void readJobMapFromDisk(ArraySet<JobStatus> jobSet) {
         new ReadJobMapFromDiskRunnable(jobSet).run();
     }
 
@@ -274,18 +237,14 @@ public class JobStore {
             List<JobStatus> mStoreCopy = new ArrayList<JobStatus>();
             synchronized (JobStore.this) {
                 // Copy over the jobs so we can release the lock before writing.
-                for (int i=0; i<mJobSet.size(); i++) {
+                for (int i = 0; i < mJobSet.size(); i++) {
                     JobStatus jobStatus = mJobSet.valueAt(i);
-                    JobStatus copy = new JobStatus(jobStatus.getJob(), jobStatus.getUid(),
+                    JobStatus copy = new JobStatus(jobStatus.getJob(),
                             jobStatus.getEarliestRunTime(), jobStatus.getLatestRunTimeElapsed());
                     mStoreCopy.add(copy);
                 }
             }
             writeJobsMapImpl(mStoreCopy);
-            if (JobSchedulerService.DEBUG) {
-                Slog.v(TAG, "Finished writing, took " + (SystemClock.elapsedRealtime()
-                        - startElapsed) + "ms");
-            }
         }
 
         private void writeJobsMapImpl(List<JobStatus> jobList) {
@@ -298,11 +257,8 @@ public class JobStore {
 
                 out.startTag(null, "job-info");
                 out.attribute(null, "version", Integer.toString(JOBS_FILE_VERSION));
-                for (int i=0; i<jobList.size(); i++) {
+                for (int i = 0; i < jobList.size(); i++) {
                     JobStatus jobStatus = jobList.get(i);
-                    if (DEBUG) {
-                        Slog.d(TAG, "Saving job " + jobStatus.getJobId());
-                    }
                     out.startTag(null, "job");
                     addIdentifierAttributesToJobTag(out, jobStatus);
                     writeConstraintsToXml(out, jobStatus);
@@ -319,23 +275,20 @@ public class JobStore {
                 mJobsFile.finishWrite(fos);
                 mDirtyOperations = 0;
             } catch (IOException e) {
-                if (DEBUG) {
-                    Slog.v(TAG, "Error writing out job data.", e);
-                }
+                // Ignore
             } catch (XmlPullParserException e) {
-                if (DEBUG) {
-                    Slog.d(TAG, "Error persisting bundle.", e);
-                }
+                // Ignore
             }
         }
 
-        /** Write out a tag with data comprising the required fields of this job and its client. */
+        /**
+         * Write out a tag with data comprising the required fields of this job and its client.
+         */
         private void addIdentifierAttributesToJobTag(XmlSerializer out, JobStatus jobStatus)
                 throws IOException {
             out.attribute(null, "jobid", Integer.toString(jobStatus.getJobId()));
             out.attribute(null, "package", jobStatus.getServiceComponent().getPackageName());
             out.attribute(null, "class", jobStatus.getServiceComponent().getClassName());
-            out.attribute(null, "uid", Integer.toString(jobStatus.getUid()));
         }
 
         private void writeBundleToXml(PersistableBundle extras, XmlSerializer out)
@@ -344,6 +297,7 @@ public class JobStore {
             extras.saveToXml(out);
             out.endTag(null, XML_TAG_EXTRAS);
         }
+
         /**
          * Write out a tag with data identifying this job's constraints. If the constraint isn't here
          * it doesn't apply.
@@ -375,9 +329,13 @@ public class JobStore {
                 out.startTag(null, XML_TAG_ONEOFF);
             }
 
+            if (jobStatus.isPersisted()) {
+                out.attribute(null, "persisted", Boolean.toString(true));
+            }
+
             if (jobStatus.hasDeadlineConstraint()) {
                 // Wall clock deadline.
-                final long deadlineWallclock =  System.currentTimeMillis() +
+                final long deadlineWallclock = System.currentTimeMillis() +
                         (jobStatus.getLatestRunTimeElapsed() - SystemClock.elapsedRealtime());
                 out.attribute(null, "deadline", Long.toString(deadlineWallclock));
             }
@@ -405,7 +363,7 @@ public class JobStore {
 
     /**
      * Runnable that reads list of persisted job from xml. This is run once at start up, so doesn't
-     * need to go through {@link JobStore#add(com.android.server.job.controllers.JobStatus)}.
+     * need to go through {@link JobStore#add(JobStatus)}.
      */
     private class ReadJobMapFromDiskRunnable implements Runnable {
         private final ArraySet<JobStatus> jobSet;
@@ -426,24 +384,23 @@ public class JobStore {
                 synchronized (JobStore.this) {
                     jobs = readJobMapImpl(fis);
                     if (jobs != null) {
-                        for (int i=0; i<jobs.size(); i++) {
-                            this.jobSet.add(jobs.get(i));
+                        for (int i = 0; i < jobs.size(); i++) {
+                            JobStatus jobStatus = jobs.get(i);
+                            // Skip any jobs that are not persisted if we have rebooted.
+                            if (!jobStatus.isPersisted() && !isMarkedForBootSession(jobStatus)) {
+                                continue;
+                            }
+                            this.jobSet.add(jobStatus);
                         }
                     }
                 }
                 fis.close();
             } catch (FileNotFoundException e) {
-                if (JobSchedulerService.DEBUG) {
-                    Slog.d(TAG, "Could not find jobs file, probably there was nothing to load.");
-                }
+                // Ignore
             } catch (XmlPullParserException e) {
-                if (JobSchedulerService.DEBUG) {
-                    Slog.d(TAG, "Error parsing xml.", e);
-                }
+                // Ignore
             } catch (IOException e) {
-                if (JobSchedulerService.DEBUG) {
-                    Slog.d(TAG, "Error parsing xml.", e);
-                }
+                // Ignore
             }
         }
 
@@ -456,12 +413,8 @@ public class JobStore {
             while (eventType != XmlPullParser.START_TAG &&
                     eventType != XmlPullParser.END_DOCUMENT) {
                 eventType = parser.next();
-                Slog.d(TAG, parser.getName());
             }
             if (eventType == XmlPullParser.END_DOCUMENT) {
-                if (DEBUG) {
-                    Slog.d(TAG, "No persisted jobs.");
-                }
                 return null;
             }
 
@@ -472,11 +425,9 @@ public class JobStore {
                 try {
                     int version = Integer.valueOf(parser.getAttributeValue(null, "version"));
                     if (version != JOBS_FILE_VERSION) {
-                        Slog.d(TAG, "Invalid version number, aborting jobs file read.");
                         return null;
                     }
                 } catch (NumberFormatException e) {
-                    Slog.e(TAG, "Invalid version number, aborting jobs file read.");
                     return null;
                 }
                 eventType = parser.next();
@@ -488,12 +439,7 @@ public class JobStore {
                         if ("job".equals(tagName)) {
                             JobStatus persistedJob = restoreJobFromXml(parser);
                             if (persistedJob != null) {
-                                if (DEBUG) {
-                                    Slog.d(TAG, "Read out " + persistedJob);
-                                }
                                 jobs.add(persistedJob);
-                            } else {
-                                Slog.d(TAG, "Error reading job from file.");
                             }
                         }
                     }
@@ -512,15 +458,11 @@ public class JobStore {
         private JobStatus restoreJobFromXml(XmlPullParser parser) throws XmlPullParserException,
                 IOException {
             JobInfo.Builder jobBuilder;
-            int uid;
 
             // Read out job identifier attributes.
             try {
                 jobBuilder = buildBuilderFromXml(parser);
-                jobBuilder.setPersisted(true);
-                uid = Integer.valueOf(parser.getAttributeValue(null, "uid"));
             } catch (NumberFormatException e) {
-                Slog.e(TAG, "Error parsing job's required fields, skipping");
                 return null;
             }
 
@@ -538,7 +480,6 @@ public class JobStore {
             try {
                 buildConstraintsFromXml(jobBuilder, parser);
             } catch (NumberFormatException e) {
-                Slog.d(TAG, "Error reading constraints, skipping.");
                 return null;
             }
             parser.next(); // Consume </constraints>
@@ -555,9 +496,6 @@ public class JobStore {
             try {
                 runtimes = buildExecutionTimesFromXml(parser);
             } catch (NumberFormatException e) {
-                if (DEBUG) {
-                    Slog.d(TAG, "Error parsing execution time parameters, skipping.");
-                }
                 return null;
             }
 
@@ -566,7 +504,6 @@ public class JobStore {
                     String val = parser.getAttributeValue(null, "period");
                     jobBuilder.setPeriodic(Long.valueOf(val));
                 } catch (NumberFormatException e) {
-                    Slog.d(TAG, "Error reading periodic execution criteria, skipping.");
                     return null;
                 }
             } else if (XML_TAG_ONEOFF.equals(parser.getName())) {
@@ -579,16 +516,18 @@ public class JobStore {
                                 runtimes.second - SystemClock.elapsedRealtime());
                     }
                 } catch (NumberFormatException e) {
-                    Slog.d(TAG, "Error reading job execution criteria, skipping.");
                     return null;
                 }
             } else {
-                if (DEBUG) {
-                    Slog.d(TAG, "Invalid parameter tag, skipping - " + parser.getName());
-                }
                 // Expecting a parameters start tag.
                 return null;
             }
+
+            String persisted = parser.getAttributeValue(null, "persisted");
+            if (persisted != null) {
+                jobBuilder.setPersisted(Boolean.valueOf(persisted));
+            }
+
             maybeBuildBackoffPolicyFromXml(jobBuilder, parser);
 
             parser.nextTag(); // Consume parameters end tag.
@@ -598,9 +537,6 @@ public class JobStore {
                 eventType = parser.next();
             } while (eventType == XmlPullParser.TEXT);
             if (!(eventType == XmlPullParser.START_TAG && XML_TAG_EXTRAS.equals(parser.getName()))) {
-                if (DEBUG) {
-                    Slog.d(TAG, "Error reading extras, skipping.");
-                }
                 return null;
             }
 
@@ -608,7 +544,7 @@ public class JobStore {
             jobBuilder.setExtras(extras);
             parser.nextTag(); // Consume </extras>
 
-            return new JobStatus(jobBuilder.build(), uid, runtimes.first, runtimes.second);
+            return new JobStatus(jobBuilder.build(), runtimes.first, runtimes.second);
         }
 
         private JobInfo.Builder buildBuilderFromXml(XmlPullParser parser) throws NumberFormatException {
@@ -657,6 +593,7 @@ public class JobStore {
         /**
          * Convenience function to read out and convert deadline and delay from xml into elapsed real
          * time.
+         *
          * @return A {@link android.util.Pair}, where the first value is the earliest elapsed runtime
          * and the second is the latest elapsed runtime.
          */
@@ -685,5 +622,29 @@ public class JobStore {
             }
             return Pair.create(earliestRunTimeElapsed, latestRunTimeElapsed);
         }
+    }
+
+    private void markForBootSession(JobStatus jobStatus) {
+        // Pending intents are cleared on reboot. Therefore, we can use one to mark that we haven't
+        // rebooted yet.
+        Intent intent = new Intent(mContext, JobSchedulerService.class)
+                .setAction(jobStatus.toShortString());
+        PendingIntent.getService(mContext, jobStatus.getJobId(), intent, PendingIntent.FLAG_CANCEL_CURRENT);
+    }
+
+    private void unmarkForBootSession(JobStatus jobStatus) {
+        Intent intent = new Intent(mContext, JobSchedulerService.class)
+                .setAction(jobStatus.toShortString());
+        PendingIntent pendingIntent = PendingIntent.getService(mContext, jobStatus.getJobId(), intent, PendingIntent.FLAG_NO_CREATE);
+        if (pendingIntent != null) {
+            pendingIntent.cancel();
+        }
+    }
+
+    private boolean isMarkedForBootSession(JobStatus jobStatus) {
+        Intent intent = new Intent(mContext, JobSchedulerService.class)
+                .setAction(jobStatus.toShortString());
+        PendingIntent pendingIntent = PendingIntent.getService(mContext, jobStatus.getJobId(), intent, PendingIntent.FLAG_NO_CREATE);
+        return pendingIntent != null;
     }
 }

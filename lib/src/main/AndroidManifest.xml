@@ -9,12 +9,12 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name">
-        <service android:name="me.tatarka.support.job.JobServiceCompat" />
+        <service android:name="me.tatarka.support.server.job.JobServiceCompat" />
 
-        <service android:name=".JobSchedulerService" />
+        <service android:name="me.tatarka.support.server.job.JobSchedulerService" />
 
         <receiver
-            android:name=".NetworkReceiver"
+            android:name="me.tatarka.support.server.job.controllers.NetworkReceiver"
             android:exported="false"
             android:enabled="false">
             <intent-filter>
@@ -23,21 +23,33 @@
         </receiver>
 
         <receiver
-            android:name=".PowerReceiver"
+            android:name="me.tatarka.support.server.job.controllers.PowerReceiver"
             android:exported="false"
             android:enabled="false">
             <intent-filter>
+                <action android:name="android.intent.action.ACTION_BATTERY_LOW" />
+                <action android:name="android.intent.action.ACTION_BATTERY_OKAY" />
                 <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
                 <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+                <action android:name="me.tatarka.support.server.job.controllers.PowerReceiver.ACTION_CHARGING_STABLE" />
             </intent-filter>
         </receiver>
 
         <receiver
-            android:name=".BootReceiver"
+            android:name="me.tatarka.support.server.job.controllers.BootReceiver"
             android:exported="false"
             android:enabled="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="me.tatarka.support.server.job.controllers.TimeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="me.tatarka.support.jobscheduler.JOB_DEADLINE_EXPIRED" />
+                <action android:name="me.tatarka.support.jobscheduler.JOB_DELAY_EXPIRED" />
             </intent-filter>
         </receiver>
     </application>

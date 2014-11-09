@@ -25,8 +25,12 @@ import android.os.Message;
 import android.os.Messenger;
 import android.support.v7.app.ActionBarActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.*;
+
+import java.util.List;
+
 import me.tatarka.support.job.JobInfo;
 import me.tatarka.support.job.JobParameters;
 import me.tatarka.support.job.JobScheduler;
@@ -202,6 +206,12 @@ public class MainActivity extends ActionBarActivity {
         Message m = Message.obtain(mHandler, MSG_UNCOLOUR_START);
         mHandler.sendMessageDelayed(m, 1000L); // uncolour in 1 second.
         mParamsTextView.setText("Executing: " + params.getJobId() + " " + params.getExtras());
+
+        JobScheduler jobScheduler = JobScheduler.getInstance(this);
+        List<JobInfo> pendingJobs = jobScheduler.getAllPendingJobs();
+        for (JobInfo job: pendingJobs) {
+            Log.d(TAG, "pending job: " + job);
+        }
     }
 
     /**
