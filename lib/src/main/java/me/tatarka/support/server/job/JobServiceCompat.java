@@ -6,12 +6,15 @@ import android.content.Intent;
 import android.os.PowerManager;
 import android.support.v4.content.WakefulBroadcastReceiver;
 
+import org.apache.http.entity.ContentProducer;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import me.tatarka.support.internal.util.ArraySet;
 import me.tatarka.support.job.JobInfo;
 import me.tatarka.support.server.job.controllers.BootReceiver;
+import me.tatarka.support.server.job.controllers.ControllerPrefs;
 import me.tatarka.support.server.job.controllers.IdleReceiver;
 import me.tatarka.support.server.job.controllers.JobStatus;
 import me.tatarka.support.server.job.controllers.NetworkReceiver;
@@ -123,6 +126,11 @@ public class JobServiceCompat extends IntentService {
 
     private void handleCancelJob(int jobId) {
         unscheduleJob(jobId);
+        JobStore jobStore = JobStore.initAndGet(this);
+        synchronized (jobStore) {
+            JobStatus job = jobStore.getJobByJobId(jobId);
+            jobStore.remove(job);
+        }
         JobSchedulerService.stopJob(this, jobId);
     }
 
@@ -134,6 +142,7 @@ public class JobServiceCompat extends IntentService {
                 JobStatus jobStatus = jobStatuses.valueAt(i);
                 unscheduleJob(jobStatus.getJobId());
             }
+            jobStore.clear();
         }
         JobSchedulerService.stopAll(this);
     }
@@ -162,6 +171,8 @@ public class JobServiceCompat extends IntentService {
     }
 
     private void handleBoot() {
+        ControllerPrefs.getInstance(this).clear();
+
         JobStore jobStore = JobStore.initAndGet(this);
         synchronized (jobStore) {
             ArraySet<JobStatus> jobStatuses = jobStore.getJobs();

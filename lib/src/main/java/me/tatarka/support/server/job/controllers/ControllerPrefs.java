@@ -6,7 +6,7 @@ import android.content.SharedPreferences;
 /**
  * Created by evantatarka on 11/8/14.
  */
-class ControllerPrefs {
+public class ControllerPrefs {
     private static final String PREFS_NAME = "me.tatarka.support.job.controllers.PREFS";
     private static final String KEY_BATTERY_LOW = "battery_low";
     private static final String KEY_NEXT_JOB_EXPIRED_ELAPSED_MILLIS = "next_job_expired_elapsed_millis";
@@ -15,7 +15,7 @@ class ControllerPrefs {
 
     private static ControllerPrefs sInstance;
 
-    static ControllerPrefs getInstance(Context context) {
+    public static ControllerPrefs getInstance(Context context) {
         if (sInstance == null) {
             sInstance = new ControllerPrefs(context);
         }
@@ -46,6 +46,10 @@ class ControllerPrefs {
 
     Editor edit() {
         return new Editor(prefs.edit());
+    }
+
+    public void clear() {
+        prefs.edit().clear().apply();
     }
 
     static class Editor {
