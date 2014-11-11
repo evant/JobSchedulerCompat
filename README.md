@@ -9,8 +9,28 @@ well-tested, so I would advise not using in production at this time. There are
 no guarantees that this will not run down your battery or cause your device to
 explode.
 
+### Gradle 
 ```groovy
 compile 'me.tatarka.support:jobscheduler:0.1.0'
+```
+### Maven
+```xml
+<dependency>
+  <groupId>me.tatarka.support</groupId>
+  <artifactId>jobscheduler</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
+
+You also have to enable manifest merging to ensure the services and receivers are added you your manifest.
+```xml
+<plugin>
+  <groupId>com.jayway.maven.plugins.android.generation2</groupId>
+  <artifactId>android-maven-plugin</artifactId>
+  <configuration>
+    <mergeManifests>true</mergeManifests>
+  </configuration>
+</plugin>
 ```
 
 ## Usage
