@@ -19,10 +19,11 @@ compile 'me.tatarka.support:jobscheduler:0.1.0'
   <groupId>me.tatarka.support</groupId>
   <artifactId>jobscheduler</artifactId>
   <version>0.1.0</version>
+  <type>aar</type>
 </dependency>
 ```
 
-You also have to enable manifest merging to ensure the services and receivers are added you your manifest.
+You also have to enable manifest merging to ensure the services and receivers are added to your manifest.
 ```xml
 <plugin>
   <groupId>com.jayway.maven.plugins.android.generation2</groupId>
