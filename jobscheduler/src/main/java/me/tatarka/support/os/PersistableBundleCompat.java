@@ -66,7 +66,7 @@ class PersistableBundleCompat {
         }
     }
 
-    static void putPersistableBundle(String key, Object value, Object bundle) {
+    static void putPersistableBundle(Object bundle, String key, Object value) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ((PersistableBundle) bundle).putPersistableBundle(key, (PersistableBundle) value);
         } else {
@@ -74,7 +74,7 @@ class PersistableBundleCompat {
         }
     }
 
-    static Object getPersistableBundle(String key, Object bundle) {
+    static Object getPersistableBundle(Object bundle, String key) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return ((PersistableBundle) bundle).getPersistableBundle(key);
         } else {
@@ -146,24 +146,36 @@ class PersistableBundleCompat {
         }
     }
 
-    static void putAll(Object bundle, Map map) {
-        Class bundleClass;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            bundleClass = PersistableBundle.class;
-        } else {
-            bundleClass = Bundle.class;
-        }
+    static void putAll(Object bundle, Map<String, Object> map) {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
 
-        try {
-            Method method = bundleClass.getDeclaredMethod("putAll", Map.class);
-            method.setAccessible(true);
-            method.invoke(bundle, map);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
+            if (value instanceof Integer) {
+                putInt(bundle, key, (Integer) value);
+            } else if (value instanceof Long) {
+                putLong(bundle, key, (Long) value);
+            } else if (value instanceof Double) {
+                putDouble(bundle, key, (Double) value);
+            } else if (value instanceof String) {
+                putString(bundle, key, (String) value);
+            } else if (value instanceof int[]) {
+                putIntArray(bundle, key, (int[]) value);
+            } else if (value instanceof long[]) {
+                putLongArray(bundle, key, (long[]) value);
+            } else if (value instanceof double[]) {
+                putDoubleArray(bundle, key, (double[]) value);
+            } else if (value instanceof String[]) {
+                putStringArray(bundle, key, (String[]) value);
+            } else if (value instanceof Map) {
+                // Fix up any Maps by replacing them with PersistableBundles.
+                Object persitableBundle = newInstance();
+                putAll(persitableBundle, (Map<String, Object>) value);
+                putPersistableBundle(bundle, key, persitableBundle);
+            } else {
+                throw new IllegalArgumentException("Bad value in PersistableBundle key=" + key +
+                        " value=" + value);
+            }
         }
     }
 

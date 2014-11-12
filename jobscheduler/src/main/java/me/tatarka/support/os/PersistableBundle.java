@@ -51,27 +51,8 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @throws IllegalArgumentException if any element of #map cannot be persisted.
      */
     private PersistableBundle(Map<String, Object> map) {
-        // First stuff everything in.
+        bundle = PersistableBundleCompat.newInstance();
         putAll(map);
-
-        // Now verify each item throwing an exception if there is a violation.
-        Set<String> keys = map.keySet();
-        Iterator<String> iterator = keys.iterator();
-        while (iterator.hasNext()) {
-            String key = iterator.next();
-            Object value = map.get(key);
-            if (value instanceof Map) {
-                // Fix up any Maps by replacing them with PersistableBundles.
-                putPersistableBundle(key, new PersistableBundle((Map<String, Object>) value));
-            } else if (!(value instanceof Integer) && !(value instanceof Long) &&
-                    !(value instanceof Double) && !(value instanceof String) &&
-                    !(value instanceof int[]) && !(value instanceof long[]) &&
-                    !(value instanceof double[]) && !(value instanceof String[]) &&
-                    !(value instanceof PersistableBundle) && (value != null)) {
-                throw new IllegalArgumentException("Bad value in PersistableBundle key=" + key +
-                        " value=" + value);
-            }
-        }
     }
 
     /**
@@ -388,7 +369,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @param value a Bundle object, or null
      */
     public void putPersistableBundle(String key, PersistableBundle value) {
-        PersistableBundleCompat.putPersistableBundle(key, value.bundle, bundle);
+        PersistableBundleCompat.putPersistableBundle(bundle, key, value.bundle);
     }
 
     /**
@@ -399,7 +380,7 @@ public final class PersistableBundle implements Parcelable, Cloneable, XmlUtils.
      * @return a Bundle value, or null
      */
     public PersistableBundle getPersistableBundle(String key) {
-        return new PersistableBundle(PersistableBundleCompat.getPersistableBundle(key, bundle));
+        return new PersistableBundle(PersistableBundleCompat.getPersistableBundle(bundle, key));
     }
 
     /**
