@@ -1,3 +1,15 @@
+import org.ajoberstar.grgit.*
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    
+    dependencies {
+        classpath 'org.ajoberstar:gradle-git:0.11.2'
+    }
+}
+
 apply plugin: 'signing'
 
 task androidJavadocs(type: Javadoc) {
@@ -64,4 +76,19 @@ uploadArchives {
             name 'Evan Tatarka'
         }
     }
+}
+
+def grgit = Grgit.open(project.rootDir)
+def branchName = grgit.branch.current.name
+
+task tagRelease << {
+    grgit.tag.add {
+        name = "v$version"
+        message = "Release of $version"
+    }
+}
+
+
+if (branchName == 'master' && !version.endWith('SNAPSHOT')) {
+    uploadArchives.dependsOn(tagRelease)
 }
