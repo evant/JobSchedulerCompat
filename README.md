@@ -11,14 +11,14 @@ explode.
 
 ### Gradle 
 ```groovy
-compile 'me.tatarka.support:jobscheduler:0.1.0'
+compile 'me.tatarka.support:jobscheduler:0.1.1'
 ```
 ### Maven
 ```xml
 <dependency>
   <groupId>me.tatarka.support</groupId>
   <artifactId>jobscheduler</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
   <type>aar</type>
 </dependency>
 ```
