@@ -88,7 +88,6 @@ task tagRelease << {
     }
 }
 
-
-if (branchName == 'master' && !version.endWith('SNAPSHOT')) {
+if (branchName == 'master' && !version.endsWith('SNAPSHOT')) {
     uploadArchives.dependsOn(tagRelease)
 }
