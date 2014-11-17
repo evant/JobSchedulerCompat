@@ -134,6 +134,15 @@ depending on what you are doing.
    preserving battery life and ensuring your job is run.
 
 3. There may be other subtle differences on when and how many jobs run at the
-   same time. This is because, unlike the system `JobScheduler`, there is no way
-   for it to know the state of other jobs running on the system and batch them
-   together.
+   same time. This is because, unlike the system `JobScheduler`, the current
+   implementatoin cannot detect the state of other jobs running on the system
+   and batch them together.
+
+## Contributing
+
+The best way to help out right now is by testing, run it for a while and see if
+it behaves like expected. Creating apps that would help log long-term usage
+would be helpful as well.
+
+If you want to do something more specific, feel free to leave a comment on any of
+the unassigned issues, or create your own.
