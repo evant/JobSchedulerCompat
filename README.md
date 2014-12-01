@@ -71,7 +71,7 @@ Then use the `JobScheduler` to schedule the job.
 ```java
 import me.tatarka.support.job.JobInfo;
 import me.tatarka.support.job.JobScheduler;
-import me.tatarka.support.os.PersistableBundle;
+import me.tatarka.support.os.PersitableBundle;
 
 // Get an instance of the JobScheduler, this will delegate to the system JobScheduler on api 21+ 
 // and to a custom implementataion on older api levels.
