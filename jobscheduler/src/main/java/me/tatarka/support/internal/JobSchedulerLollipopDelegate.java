@@ -59,13 +59,14 @@ public class JobSchedulerLollipopDelegate extends JobScheduler {
         builder.setExtras((android.os.PersistableBundle) job.getExtras().getRealBundle());
         builder.setRequiresCharging(job.isRequireCharging());
         builder.setRequiresDeviceIdle(job.isRequireDeviceIdle());
-        builder.setRequiredNetworkType(job.getNetworkType());
-
-        if (job.getMinLatencyMillis() != 0) {
+        builder.setRequiredNetworkType(job.getNetworkType()); 
+        builder.setPersisted(job.isPersisted());  
+        
+        if (job.getMinLatencyMillis() != 0 && !job.isPeriodic()) {
             builder.setMinimumLatency(job.getMinLatencyMillis());
         }
 
-        if (job.getMaxExecutionDelayMillis() != 0) {
+        if (job.getMaxExecutionDelayMillis() != 0 && !job.isPeriodic()) {
             builder.setOverrideDeadline(job.getMaxExecutionDelayMillis());
         }
 
@@ -73,24 +74,27 @@ public class JobSchedulerLollipopDelegate extends JobScheduler {
             builder.setPeriodic(job.getIntervalMillis());
         }
 
-        builder.setPersisted(job.isPersisted());
-        builder.setBackoffCriteria(job.getInitialBackoffMillis(), job.getBackoffPolicy());
+        if (!job.isRequireDeviceIdle()) {
+            builder.setBackoffCriteria(job.getInitialBackoffMillis(), job.getBackoffPolicy());
+        }
 
         return builder.build();
     }
 
     private static JobInfo convertFromJobInfo(android.app.job.JobInfo job) {
         JobInfo.Builder builder = new JobInfo.Builder(job.getId(), job.getService());
+        
         builder.setExtras(new PersistableBundle(job.getExtras()));
         builder.setRequiresCharging(job.isRequireCharging());
         builder.setRequiresDeviceIdle(job.isRequireDeviceIdle());
         builder.setRequiredNetworkType(job.getNetworkType());
+        builder.setPersisted(job.isPersisted());
 
-        if (job.getMinLatencyMillis() != 0) {
+        if (job.getMinLatencyMillis() != 0 && !job.isPeriodic()) {
             builder.setMinimumLatency(job.getMinLatencyMillis());
         }
 
-        if (job.getMaxExecutionDelayMillis() != 0) {
+        if (job.getMaxExecutionDelayMillis() != 0 && !job.isPeriodic()) {
             builder.setOverrideDeadline(job.getMaxExecutionDelayMillis());
         }
 
@@ -98,8 +102,9 @@ public class JobSchedulerLollipopDelegate extends JobScheduler {
             builder.setPeriodic(job.getIntervalMillis());
         }
 
-        builder.setPersisted(job.isPersisted());
-        builder.setBackoffCriteria(job.getInitialBackoffMillis(), job.getBackoffPolicy());
+        if (!job.isRequireDeviceIdle()) {
+            builder.setBackoffCriteria(job.getInitialBackoffMillis(), job.getBackoffPolicy());
+        }
 
         return builder.build();
     }
