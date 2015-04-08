@@ -9,6 +9,9 @@ well-tested, so I would advise not using in production at this time. There are
 no guarantees that this will not run down your battery or cause your device to
 explode.
 
+## Help needed
+After building this, I've discovered that I really don't have the interest in maintaining it. It still requires significant work to get into a production-quality state. And above all, it needs significant work monitoring battery usage and finding the optimal strategies between battery usage and running jobs in a timely manner. If anyone is interested, I'll gladly answer any question about implementation details and what needs to be fixed. I won't however, spend time tracking down bugs.
+
 ### Gradle 
 ```groovy
 compile 'me.tatarka.support:jobscheduler:0.1.1'
