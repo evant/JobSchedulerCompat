@@ -74,14 +74,14 @@ Then use the `JobScheduler` to schedule the job.
 ```java
 import me.tatarka.support.job.JobInfo;
 import me.tatarka.support.job.JobScheduler;
-import me.tatarka.support.os.PersitableBundle;
+import me.tatarka.support.os.PersistableBundle;
 
 // Get an instance of the JobScheduler, this will delegate to the system JobScheduler on api 21+ 
 // and to a custom implementataion on older api levels.
 JobScheduler jobScheduler = JobScheduler.getInstance(context);
 
 // Extras for your job.
-PersitableBundle extras = new PersitableBundle();
+PersistableBundle extras = new PersistableBundle();
 extras.putString("key", "value");
 
 // Construct a new job with your service and some constraints.
