@@ -1,5 +1,9 @@
 JobSchedulerCompat
 ==================
+
+**Warning this project is not maintained!**
+Check out https://developers.google.com/cloud-messaging/network-manager for a possibly better solution.
+
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/me.tatarka.support/jobscheduler/badge.svg?style=flat)](https://maven-badges.herokuapp.com/maven-central/me.tatarka.support/jobscheduler)
 
 A backport of Android Lollipop's JobScheduler to api 10+.
@@ -8,9 +12,6 @@ All JobScheduler features are implemented. However, this library has not been
 well-tested, so I would advise not using in production at this time. There are
 no guarantees that this will not run down your battery or cause your device to
 explode.
-
-## Help needed
-After building this, I've discovered that I really don't have the interest in maintaining it. It still requires significant work to get into a production-quality state. And above all, it needs significant work monitoring battery usage and finding the optimal strategies between battery usage and running jobs in a timely manner. If anyone is interested, I'll gladly answer any question about implementation details and what needs to be fixed. I won't however, spend time tracking down bugs.
 
 ### Gradle 
 ```groovy
